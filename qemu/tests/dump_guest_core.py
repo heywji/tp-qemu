@@ -97,10 +97,10 @@ def run(test, params, env):
     trigger_core_dump_command %= str(qemu_id)
     test.log.info("trigger core dump command: %s", trigger_core_dump_command)
     process.run(trigger_core_dump_command)
-    utils_misc.wait_for(lambda: os.path.exists(core_file), timeout=60)
-    if params.get('check_core_file', 'yes') == 'yes':
-        check_core_file(arch)
-        if dump_guest_core == 'on' and check_vmcore == 'yes':
-            crash_cmd %= host_kernel_version
-            utils_misc.wait_for(lambda: os.path.exists(vmcore_file), timeout=60)
-            check_vmcore_file()
+    if utils_misc.wait_for(lambda: os.path.exists(core_file), timeout=60) is None:
+        if params.get('check_core_file', 'yes') == 'yes':
+            check_core_file(arch)
+            if dump_guest_core == 'on' and check_vmcore == 'yes':
+                crash_cmd %= host_kernel_version
+                if utils_misc.wait_for(lambda: os.path.exists(vmcore_file), timeout=60) is None:
+                    check_vmcore_file()
