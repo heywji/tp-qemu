@@ -36,7 +36,7 @@ def run(test, params, env):
         output = None
         for h in re.split("\n+", info):
             if h.startswith("%s" % params):
-                output = re.split(r"\s+", h)[1]
+                output = re.split(r'\s+', h)[1]
         if output is None:
             raise ValueError(f"unsupported meminfo param: {params}")
         return int(output)

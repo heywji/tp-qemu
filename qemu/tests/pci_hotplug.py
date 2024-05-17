@@ -151,21 +151,13 @@ def run(test, params, env):
             vm.monitor.send_args_cmd(controller_add_cmd, convert=False)
 
         verify_supported_device(pci_model)
-        driver_add_cmd = "%s auto file=%s,if=none,format=%s,id=%s,serial=%s" % (
-            drive_cmd_type,
-            image_filename,
-            image_format,
-            pci_info[pci_num][0],
-            serial_id,
-        )
+        driver_add_cmd = ("%s auto file=%s,if=none,format=%s,id=%s,serial=%s" %
+                          (drive_cmd_type, image_filename, image_format,
+                           pci_info[pci_num][0], serial_id))
         if drive_cmd_type == "__com.redhat_drive_add":
-            driver_add_cmd = "%s file=%s,format=%s,id=%s,serial=%s" % (
-                drive_cmd_type,
-                image_filename,
-                image_format,
-                pci_info[pci_num][0],
-                serial_id,
-            )
+            driver_add_cmd = ("%s file=%s,format=%s,id=%s,serial=%s" %
+                              (drive_cmd_type, image_filename, image_format,
+                               pci_info[pci_num][0], serial_id))
         # add block device to vm device container
         image_name = img_list[pci_num + 1]
         image_params = params.object_params(image_name)

@@ -77,19 +77,17 @@ class NBDExportImage(object):
 
     def create_image(self):
         result = None
-        if self._image_params.get("create_image_cmd"):
-            result = process.run(
-                self._image_params["create_image_cmd"], ignore_status=True, shell=True
-            )
+        if self._image_params.get('create_image_cmd'):
+            result = process.run(self._image_params['create_image_cmd'],
+                                 ignore_status=True, shell=True)
         elif not self._image_params.get_boolean("force_create_image"):
             _, result = qemu_storage.QemuImg(
                 self._image_params, data_dir.get_data_dir(), self._tag
             ).create(self._image_params)
 
         if result and result.exit_status != 0:
-            raise exceptions.TestFail(
-                "Failed to create image, error: %s" % result.stderr.decode()
-            )
+            raise exceptions.TestFail('Failed to create image, error: %s'
+                                      % result.stderr.decode())
 
     def export_image(self):
         raise NotImplementedError()

@@ -301,14 +301,8 @@ def run_tests_for_category(
                                     interface=interface,
                                 )
                                 exec_cmd = pktgen_config.generate_pktgen_cmd(
-                                    script,
-                                    pkt_cate,
-                                    pktgen_config.interface,
-                                    pktgen_config.dsc,
-                                    threads,
-                                    size,
-                                    burst,
-                                )
+                                    script, pkt_cate, pktgen_config.interface, pktgen_config.dsc,
+                                    threads, size, burst)
                             else:
                                 pktgen_config = pktgen_config.configure_pktgen(
                                     params,

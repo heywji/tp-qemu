@@ -45,9 +45,9 @@ class MemoryHotplugSimple(MemoryHotplugTest):
         elif len(mem_devs_origin) < len(mem_devs_post):
             mem_devs = mem_devs_post - mem_devs_origin
             vm, operation = pre_vm, "unplug"
-        func = getattr(self, "%s_memory" % operation)  # pylint: disable=E0606
-        for mem_dev in mem_devs:  # pylint: disable=E0606
-            func(vm, mem_dev)  # pylint: disable=E0606
+        func = getattr(self, "%s_memory" % operation)   # pylint: disable=E0606
+        for mem_dev in mem_devs:    # pylint: disable=E0606
+            func(vm, mem_dev)   # pylint: disable=E0606
 
     def get_mem_by_name(self, vm, name):
         """

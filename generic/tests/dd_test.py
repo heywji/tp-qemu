@@ -63,13 +63,10 @@ def run(test, params, env):
                 test.error(err)
 
     def _check_disk_partitions_number():
-        """Check the data disk partitions number."""
-        del partitions[:]  # pylint: disable=E0606
-        partitions.extend(
-            re.findall(
-                r"%s\d+" % dev_id, " ".join(utils_disk.get_linux_disks(session, True))
-            )
-        )
+        """ Check the data disk partitions number. """
+        del partitions[:]   # pylint: disable=E0606
+        partitions.extend(re.findall(
+            r'%s\d+' % dev_id, ' '.join(utils_disk.get_linux_disks(session, True))))
         return len(partitions) == bs_count
 
     vm = env.get_vm(params["main_vm"])

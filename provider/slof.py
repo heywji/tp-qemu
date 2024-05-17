@@ -140,8 +140,8 @@ def verify_boot_device(
     :return: true if booted from the specified device
     :rtype: bool
     """
-    pattern = re.compile(r"^0x0?")
-    addr = pattern.sub("", child_addr)
+    pattern = re.compile(r'^0x0?')
+    addr = pattern.sub('', child_addr)
     sub_addr = ""
     if sub_child_addr:
         sub_addr = pattern.sub("", sub_child_addr)

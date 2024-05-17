@@ -135,18 +135,17 @@ def send_data_from_guest_to_host(
     if "ncat" in tool_bin:
         cmd_transfer = "%s --vsock --send-only -l %s < %s" % (tool_bin, port, tmp_file)
     if "nc-vsock" in tool_bin:
-        cmd_transfer = "%s -l %s < %s" % (tool_bin, port, tmp_file)
+        cmd_transfer = '%s -l %s < %s' % (tool_bin, port, tmp_file)
     if cmd_transfer is None:
         raise ValueError(f"unexpected test tool: {tool_bin}")
-    error_context.context(
-        "Transfer file from guest via command: %s" % cmd_transfer, LOG_JOB.info
-    )
+    error_context.context('Transfer file from guest via command: %s'
+                          % cmd_transfer, LOG_JOB.info)
     guest_session.sendline(cmd_transfer)
     cmd_receive = None
     if "ncat" in tool_bin:
         cmd_receive = "%s --vsock %s %s > %s" % (tool_bin, guest_cid, port, tmp_file)
     if "nc-vsock" in tool_bin:
-        cmd_receive = "%s %s %s > %s" % (tool_bin, guest_cid, port, tmp_file)
+        cmd_receive = '%s %s %s > %s' % (tool_bin, guest_cid, port, tmp_file)
     if cmd_receive is None:
         raise ValueError(f"unexpected test tool: {tool_bin}")
     time.sleep(60)

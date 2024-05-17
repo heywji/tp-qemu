@@ -23,8 +23,8 @@ def run(test, params, env):
         o = e.output
     else:
         test.fail("Test failed since vm shouldn't be launched")
-    error_context.context(
-        "Check the expected error message: %s" % error_msg, test.log.info
-    )
+    error_context.context("Check the expected error message: %s"
+                          % error_msg, test.log.info)
     if not re.search(error_msg, o):  # pylint: disable=E0601
-        test.fail("Can not get expected error message: %s from %s" % (error_msg, o))
+        test.fail("Can not get expected error message: %s from %s"
+                  % (error_msg, o))

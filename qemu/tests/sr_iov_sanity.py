@@ -182,7 +182,7 @@ def run(test, params, env):
         # below
         if static_ip:
             IP_addr_VF = None
-            if "IP_addr_VF" not in locals():
+            if 'IP_addr_VF' not in locals():
                 IP_addr_VF = ip_address(params.get("start_addr_VF"))
                 net_mask = params.get("net_mask")
             if not IP_addr_VF:

@@ -178,13 +178,11 @@ def mouse_move_test(test, params, console, listener, wait_time, end_pos, absolut
     )
     for i, (x, y) in enumerate(event_lst):
         if not vertical:
-            if abs((k * x + b) - y) > tolerance:  # pylint: disable=E0606
-                test.fail(
-                    "Received pointer pos beyond line's tolerance scope "
-                    "when move from {0} to {1}. Received pos is ({2}, {3}),"
-                    "it didn't nearby the expected line "
-                    "y={4}x+{5}.".format(start_pos, end_pos, x, y, k, b)
-                )
+            if abs((k * x + b) - y) > tolerance:    # pylint: disable=E0606
+                test.fail("Received pointer pos beyond line's tolerance scope "
+                          "when move from {0} to {1}. Received pos is ({2}, {3}),"
+                          "it didn't nearby the expected line "
+                          "y={4}x+{5}.".format(start_pos, end_pos, x, y, k, b))
             elif k == 0:
                 # for horizontal direction line, only x value will change.
                 if i > 0:

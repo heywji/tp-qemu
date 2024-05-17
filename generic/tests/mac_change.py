@@ -71,16 +71,20 @@ def run(test, params, env):
             int_shutdown_cmd = params.get("int_shutdown_cmd", "ifconfig %s down")
             session_serial.cmd_output_safe(int_shutdown_cmd % interface)
     else:
-        connection_id = utils_net.get_windows_nic_attribute(
-            session_serial, "macaddress", old_mac, "netconnectionid"
-        )
-        nic_index = utils_net.get_windows_nic_attribute(
-            session_serial, "netconnectionid", connection_id, "index"
-        )
+
+        connection_id = utils_net.get_windows_nic_attribute(session_serial,
+                                                            "macaddress",
+                                                            old_mac,
+                                                            "netconnectionid")
+        nic_index = utils_net.get_windows_nic_attribute(session_serial,
+                                                        "netconnectionid",
+                                                        connection_id,
+                                                        "index")
         if os_variant == "winxp" and session is not None:
-            pnpdevice_id = utils_net.get_windows_nic_attribute(
-                session, "netconnectionid", connection_id, "pnpdeviceid"
-            )
+            pnpdevice_id = utils_net.get_windows_nic_attribute(session,
+                                                               "netconnectionid",
+                                                               connection_id,
+                                                               "pnpdeviceid")
             cd_drive = utils_misc.get_winutils_vol(session)
             copy_cmd = r"xcopy %s:\devcon\wxp_x86\devcon.exe c:\ " % cd_drive
             session.cmd(copy_cmd)

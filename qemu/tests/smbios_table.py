@@ -31,7 +31,7 @@ def run(test, params, env):
                 smbios_type_number = 0
             elif sm_type == "System":
                 smbios_type_number = 1
-            smbios += " -smbios type=%s" % smbios_type_number  # pylint: disable=E0606
+            smbios += " -smbios type=%s" % smbios_type_number   # pylint: disable=E0606
             dmidecode_key = params.object_params(sm_type).get("dmikeyword")
             dmidecode_key = dmidecode_key.split()
             for key in dmidecode_key:

@@ -25,10 +25,9 @@ def run(test, params, env):
     :param params: Dictionary with test parameters
     :param env: Dictionary with test environment.
     """
-
     def _start_usbredir_server(port):
         process.getoutput("killall usbredirserver")
-        usbredir_server = utils_misc.get_binary("usbredirserver", params)
+        usbredir_server = utils_misc.get_binary('usbredirserver', params)
         usbredirserver_args = usbredir_server + " -p %s " % port
         usbredirserver_args += " %s:%s" % (vendorid, productid)
         usbredirserver_args += " > /dev/null 2>&1"
@@ -109,10 +108,10 @@ def run(test, params, env):
                 chardev_params["debug"] = usbredir_params.get("chardev_debug")
                 chardev_params["name"] = usbredir_params.get("chardev_name")
             else:
-                chardev_params["host"] = usbredir_params["chardev_host"]
-                chardev_params["port"] = free_port  # pylint: disable=E0606
-                chardev_params["server"] = usbredir_params.get("chardev_server")
-                chardev_params["wait"] = usbredir_params.get("chardev_wait")
+                chardev_params['host'] = usbredir_params['chardev_host']
+                chardev_params['port'] = free_port  # pylint: disable=E0606
+                chardev_params['server'] = usbredir_params.get('chardev_server')
+                chardev_params['wait'] = usbredir_params.get('chardev_wait')
             chardev = qdevices.CharDevice(chardev_params, chardev_id)
             usbredir_dev = qdevices.QDevice("usb-redir", aobject=usbredirdev_name)
             usbredir_filter = usbredir_params.get("usbdev_option_filter")
@@ -208,8 +207,9 @@ def run(test, params, env):
         Do I/O operations on passthrough USB stick
         """
         error_context.context("Read and write on USB stick ", test.log.info)
-        testfile = os.path.join(mount_point, "testfile")
-        iozone_cmd = params.get("iozone_cmd", " -a -I -r 64k -s 1m -i 0 -i 1 -f %s")
+        testfile = os.path.join(mount_point, 'testfile')
+        iozone_cmd = params.get("iozone_cmd",
+                                " -a -I -r 64k -s 1m -i 0 -i 1 -f %s")
         iozone_test.run(iozone_cmd % testfile)  # pylint: disable=E0606
 
     usbredirdev_name = params["usbredirdev_name"]

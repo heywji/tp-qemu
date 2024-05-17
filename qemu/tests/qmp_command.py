@@ -164,11 +164,9 @@ def run(test, params, env):
         qmp_port = qmp_ports[0]
     else:
         test.error("Incorrect configuration, no QMP monitor found.")
-    callback = {
-        "host_cmd": lambda cmd: process.system_output(cmd, shell=True).decode(),
-        "guest_cmd": session.cmd_output,
-        "qmp_cmd": qmp_port.send_args_cmd,  # pylint: disable=E0606
-    }
+    callback = {"host_cmd": lambda cmd: process.system_output(cmd, shell=True).decode(),
+                "guest_cmd": session.cmd_output,
+                "qmp_cmd": qmp_port.send_args_cmd}  # pylint: disable=E0606
 
     def send_cmd(cmd):
         """Helper to execute command on host/ssh guest/qmp monitor"""

@@ -41,7 +41,7 @@ def run(test, params, env):
         else:
             vm_client = vm
 
-    install_hlk_client(vm_client, vm_server)  # pylint: disable=E0606
+    install_hlk_client(vm_client, vm_server)    # pylint: disable=E0606
 
     pool_name = params.get("hlk_pool_name")
     project_name = params.get("hlk_project_name")

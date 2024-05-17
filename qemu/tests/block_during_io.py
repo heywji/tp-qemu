@@ -57,8 +57,7 @@ def run(test, params, env):
     def get_win_drive_letters_after_reboot():
         """Get the drive letters after reboot in windows."""
         new_mount_points = utils_misc.get_windows_drive_letters(
-            vm.wait_for_login(timeout=362)
-        )
+            vm.wait_for_login(timeout=362))
         for mount_point in fixed_mount_points:  # pylint: disable=E0606
             new_mount_points.remove(mount_point)
         diff_num = len(orig_mount_points) - len(new_mount_points)

@@ -555,8 +555,10 @@ def start_test(
                     ret["CPU"] = cpu
                     ret["thr_per_CPU"] = normal
                     row, key_list = netperf_base.netperf_record(
-                        ret, record_list, header=record_header, base=base, fbase=fbase
-                    )
+                                                    ret, record_list,
+                                                    header=record_header,
+                                                    base=base,
+                                                    fbase=fbase)
                     category = ""
                     if record_header:
                         record_header = False

@@ -33,7 +33,7 @@ def run(test, params, env):
         return disks
 
     def _get_mounted_points(did, disks, mount_info):
-        """Get the mounted points."""
+        """ Get the mounted points. """
         points = []
         for id in re.finditer(r"(%s\d+)" % did, " ".join(disks)):
             s = re.search(r"/dev/%s\s+(\S+)\s+" % id.group(1), mount_info, re.M)
@@ -69,8 +69,8 @@ def run(test, params, env):
             mount_info = session.cmd_output_safe("cat /proc/mounts | grep '/dev/'")
             disks = utils_disk.get_linux_disks(session, True)
             for did, image_name in dids.items():
-                size = params.get("image_size_%s" % image_name)
-                start = params.get("image_start_%s" % image_name, "0M")
+                size = params.get('image_size_%s' % image_name)
+                start = params.get('image_start_%s' % image_name, "0M")
                 mounted_points = _get_mounted_points(did, disks, mount_info)
                 if not mounted_points:
                     mounted_points = utils_disk.configure_empty_linux_disk(

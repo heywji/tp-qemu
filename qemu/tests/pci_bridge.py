@@ -117,7 +117,7 @@ def disk_hotplug(test, params, vm, session, image_name, drive_format, parent_bus
         Check USB in guest
         """
         output = session.cmd(params["chk_usb_cmd"])
-        return usb_serial in output  # pylint: disable=E0606
+        return (usb_serial in output)   # pylint: disable=E0606
 
     if drive_format not in ("virtio", "scsi-hd", "usb3"):
         test.cancel("Unsupported drive format: %s" % drive_format)

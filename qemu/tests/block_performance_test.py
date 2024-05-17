@@ -175,11 +175,19 @@ def run(test, params, env):
             logger.debug("Start %s / %s IO test", i, run_times)
             record = True if i + 1 == run_times else False
 
-            for img in results["images"]:
-                if results[img]["location"] == "vm":
-                    runner = session.cmd_output
-                else:
-                    runner = process.getoutput
+    def extract_time_from_output(output):
+        """
+        extract time from output
+        """
+        if os_type == "linux":
+            output = output.split("\n")[2]
+            time_spend = re.search(r"\d*.\d* s", output).group().split(" ")[0]
+        elif os_type == "windows":
+            output = output.split("\n")[4]
+            time_spend = output.split(" ")[2]
+        else:
+            raise ValueError(f"unsupported os type: {os_type}")
+        return float(time_spend)
 
                 if fio_iteration_cmd:
                     logger.debug(fio_iteration_cmd)

@@ -292,22 +292,12 @@ def run(test, params, env):
             record = "Tx-pps"
             mac = vm.get_mac_address(2)
 
-        status = launch_test(
-            session,
-            generator1,
-            generator2,
-            mac,  # pylint: disable=E0606
-            port,  # pylint: disable=E0606
-            exec_file,
-            nic1_driver,
-            nic2_driver,
-            whitelist_option,
-            nic_pci_1,
-            nic_pci_2,
-            cores,
-            queues,
-            running_time,
-        )
+        status = launch_test(session, generator1, generator2,
+                             mac, port, exec_file,  # pylint: disable=E0606
+                             nic1_driver, nic2_driver,
+                             whitelist_option,
+                             nic_pci_1, nic_pci_2,
+                             cores, queues, running_time)
         if status is True:
             error_context.context("%s test is finished" % pkt_cate, test.log.info)
         else:

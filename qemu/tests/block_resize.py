@@ -86,9 +86,9 @@ def run(test, params, env):
 
         def _check_event_cmd(cmd):
             status, output = session.cmd_status_output(cmd)
-            test.log.debug("Get event: %s", output)
-            test.log.debug("Expect contain msg: %s", msg)  # pylint: disable=E0606
-            return status == 0 and regexp.search(output)  # pylint: disable=E0606
+            test.log.debug("Get event: %s" % output)
+            test.log.debug("Expect contain msg: %s" % msg)  # pylint: disable=E0606
+            return status == 0 and regexp.search(output)    # pylint: disable=E0606
 
         drive.shrink_volume(session, mpoint, size)
         check_event = params.get("check_258_event")

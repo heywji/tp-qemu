@@ -104,10 +104,8 @@ def run(test, params, env):
         else:
             test.error("Method %s not supported", method)
         if speed != tar_speed or duplex != tar_duplex:  # pylint: disable=E0606
-            test.fail(
-                "The speed and duplex is incorrect in %s, "
-                "with speed=%s, duplex=%s" % (method, speed, duplex)
-            )
+            test.fail("The speed and duplex is incorrect in %s, "
+                      "with speed=%s, duplex=%s" % (method, speed, duplex))
 
     def get_speed_duplex_linux(session):
         """

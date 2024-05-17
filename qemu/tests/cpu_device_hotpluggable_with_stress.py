@@ -27,10 +27,8 @@ def run(test, params, env):
 
     def heavyload_install():
         if session.cmd_status(test_installed_cmd) != 0:  # pylint: disable=E0606
-            test.log.warning(
-                "Could not find installed heavyload in guest, will"
-                " install it via winutils.iso "
-            )
+            test.log.warning("Could not find installed heavyload in guest, will"
+                             " install it via winutils.iso ")
             winutil_drive = utils_misc.get_winutils_vol(session)
             if not winutil_drive:
                 test.cancel("WIN_UTILS CDROM not found.")

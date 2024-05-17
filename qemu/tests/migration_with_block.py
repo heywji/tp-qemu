@@ -217,7 +217,7 @@ def run(test, params, env):
     def eject_cdrom():
         """Eject cdrom."""
         error_context.context("Eject the original device.", test.log.info)
-        with eject_check:  # pylint: disable=E0606
+        with eject_check:   # pylint: disable=E0606
             vm.eject_cdrom(device_name, True)
         if check_block(orig_img_name):  # pylint: disable=E0606
             test.fail("Failed to eject cdrom %s. " % orig_img_name)

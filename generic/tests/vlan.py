@@ -77,7 +77,7 @@ def run(test, params, env):
         """
         Removes the named vlan interface(iface+v_id)
         """
-        v_iface = "%s.%s" % (iface, v_id)
+        v_iface = '%s.%s' % (iface, v_id)
         rem_vlan_cmd = ""
         if cmd_type == "vconfig":
             rem_vlan_cmd = "vconfig rem %s" % v_iface

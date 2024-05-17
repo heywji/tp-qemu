@@ -80,7 +80,8 @@ def run(test, params, env):
             # assume sh-like shell, try to get background process's pid
             bg_command_pid = int(session.cmd("jobs -rp"))
         except ValueError:
-            test.log.warning("Background guest command 'job -rp' output not PID")
+            test.log.warning(
+                "Background guest command 'job -rp' output not PID")
     del session  # don't leave stray ssh session lying around over save/restore
 
     start_time = time.time()

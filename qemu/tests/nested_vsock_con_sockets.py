@@ -47,7 +47,7 @@ def run(test, params, env):
             )
         if vsock_test_tool == "nc_vsock":
             tool_bin = vsock_test.compile_nc_vsock(test, vm, session)
-            cmd_transfer = "%s -l %s < %s &" % (tool_bin, vsock_port, tmp_file)
+            cmd_transfer = '%s -l %s < %s &' % (tool_bin, vsock_port, tmp_file)
         if cmd_transfer is None:
             raise ValueError(f"unsupported test tool: {vsock_test_tool}")
 

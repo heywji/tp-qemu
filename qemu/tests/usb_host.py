@@ -95,16 +95,15 @@ def run(test, params, env):
         testfile = os.path.join(mount_point, "testfile")
         if bg:
             iozone_cmd = params.get("iozone_cmd_bg", " -az -I -g 1g -f %s")
-            iozone_thread = BackgroundTest(
-                iozone_test.run,  # pylint: disable=E0606
-                (iozone_cmd % testfile,),
-            )
+            iozone_thread = BackgroundTest(iozone_test.run,  # pylint: disable=E0606
+                                           (iozone_cmd % testfile,))
             iozone_thread.start()
             if not utils_misc.wait_for(iozone_thread.is_alive, timeout=10):
                 test.fail("Fail to start the iozone background test.")
             time.sleep(10)
         else:
-            iozone_cmd = params.get("iozone_cmd", " -a -I -r 64k -s 1m -i 0 -i 1 -f %s")
+            iozone_cmd = params.get("iozone_cmd",
+                                    " -a -I -r 64k -s 1m -i 0 -i 1 -f %s")
             iozone_test.run(iozone_cmd % testfile)  # pylint: disable=E0606
 
     usb_params = {}

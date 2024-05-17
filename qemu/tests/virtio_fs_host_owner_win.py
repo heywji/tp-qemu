@@ -160,15 +160,12 @@ def run(test, params, env):
     vm.verify_alive()
     session = vm.wait_for_login()
 
-    error_context.context(
-        "Change the shared dir's owner and group" " to 'test' on host.", test.log.info
-    )
-    if params.get("privileged", "") == "yes":
-        # get shared dir by qdevices.
-        shared_dir = None
-        for device in vm.devices:
-            if isinstance(device, qdevices.QVirtioFSDev):
-                shared_dir = device.get_param("source")
+    error_context.context("Change the shared dir's owner and group"
+                          " to 'test' on host.", test.log.info)
+    shared_dir = None
+    for device in vm.devices:
+        if isinstance(device, qdevices.QVirtioFSDev):
+            shared_dir = device.get_param('source')
 
     change_source_owner = params["change_source_owner"] % shared_dir
     process.run(change_source_owner)

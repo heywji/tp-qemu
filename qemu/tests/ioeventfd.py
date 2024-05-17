@@ -67,14 +67,14 @@ def run(test, params, env):
         """
         dev_type = params.get("dev_type")
         if dev_type == "virtio_serial":
-            params["virtio_serial_extra_params_vs1"] = ioeventfd
-            dev_id = params.get("dev_id", "virtio_serial_pci0")
-        elif params["drive_format"] == "virtio":
-            params["blk_extra_params_image1"] = ioeventfd
-            dev_id = "image1"
-        elif params["drive_format"] == "scsi-hd":
-            params["bus_extra_params_image1"] = ioeventfd
-            dev_id = params.get("dev_id", "virtio_scsi_pci0")
+            params['virtio_serial_extra_params_vs1'] = ioeventfd
+            dev_id = params.get('dev_id', 'virtio_serial_pci0')
+        elif params['drive_format'] == 'virtio':
+            params['blk_extra_params_image1'] = ioeventfd
+            dev_id = 'image1'
+        elif params['drive_format'] == 'scsi-hd':
+            params['bus_extra_params_image1'] = ioeventfd
+            dev_id = params.get('dev_id', 'virtio_scsi_pci0')
         else:
             raise ValueError(f"unexpected dev_type: {dev_type}")
         return dev_id

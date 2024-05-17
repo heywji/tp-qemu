@@ -128,20 +128,9 @@ def run(test, params, env):
         for pkts in dpdk_pkts.split():
             for queue in dpdk_queues.split():
                 LOG_JOB.info(
-                    "Processing dpdk test with forward mode: %s, pkts: %s, queue: %s",
-                    forward,
-                    pkts,
-                    queue,
-                )
-                pps = run_test(
-                    forward,
-                    guest,
-                    host if forward == "rxonly" else None,
-                    dpdk_tool_path,
-                    queue,
-                    pkts,
-                    mac if forward == "rxonly" else None,  # pylint: disable=E0606
-                )
+                            'Processing dpdk test with forward mode: %s, pkts: %s, queue: %s',
+                            forward, pkts, queue)
+                pps = run_test(forward, guest, host if forward == "rxonly" else None, dpdk_tool_path, queue, pkts, mac if forward == "rxonly" else None)    # pylint: disable=E0606
                 time.sleep(2)
                 mpps = "%.2f" % (float(pps) / (10**6))
                 line = "%s|" % format_result(pkts, base, fbase)

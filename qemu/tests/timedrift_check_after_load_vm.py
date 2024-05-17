@@ -141,7 +141,7 @@ def run(test, params, env):
         error_context.context("Setup qemu-guest-agent in guest", test.log.info)
         gagent = setup_gagent()
 
-        qmp_ports = vm.get_monitors_by_type("qmp")
+        qmp_ports = vm.get_monitors_by_type('qmp')
         qmp_port = None
         if qmp_ports:
             qmp_port = qmp_ports[0]

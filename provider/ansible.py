@@ -145,9 +145,7 @@ def check_ansible_playbook(params):
         """
         Install python ansible.
         """
-        if packages is None:
-            packages = ["ansible"]
-        install_cmd = f"{sys.executable} -m pip install {' '.join(packages)}"
+        install_cmd = '%s install ansible' % pip_bin    # pylint: disable=E0606
         status, output = process.getstatusoutput(install_cmd, verbose=True)
         if status != 0:
             LOG_JOB.error("Install python packages failed as: %s", output)

@@ -431,9 +431,7 @@ def run(test, params, env):
                 )
                 vol_con = "VolumeName='%s'" % virtio_fs_disk_label
                 volume_letter = utils_misc.wait_for(
-                    lambda: utils_misc.get_win_disk_vol(session, condition=vol_con),
-                    cmd_timeout,  # pylint: disable=E0606
-                )
+                    lambda: utils_misc.get_win_disk_vol(session, condition=vol_con), cmd_timeout)  # pylint: disable=E0606
                 if volume_letter is None:
                     test.fail("Could not get virtio-fs mounted volume letter.")
                 fs_dest = "%s:" % volume_letter
@@ -850,10 +848,9 @@ def run(test, params, env):
                             )
                             result = re.search(full_pattern, xattr_content)
                         if not result:  # pylint: disable=E0606
-                            test.fail(
-                                "Attribute is not correct, the pattern is %s\n"
-                                " the attribute is %s." % (full_pattern, xattr_content)
-                            )
+                            test.fail("Attribute is not correct, the pattern is %s\n"
+                                      " the attribute is %s." % (full_pattern,
+                                                                 xattr_content))
                         if get_type:
                             return result.group(1)
 

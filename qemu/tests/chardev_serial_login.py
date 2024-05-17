@@ -19,6 +19,10 @@ def run(test, params, env):
     :param params: Dictionary with the test parameters
     :param env: Dictionary with test environment.
     """
+    def check_guest():
+        session.cmd('touch file.txt')   # pylint: disable=E0606
+        session.cmd('mkdir -p tmp')
+        session.cmd('command cp file.txt ./tmp/test.txt')
 
     def check_guest():
         session.cmd("touch file.txt")  # pylint: disable=E0606

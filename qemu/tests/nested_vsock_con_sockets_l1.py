@@ -105,6 +105,9 @@ def run(test, params, env):
     if cmd_receive is None:
         raise ValueError(f"unexpected test tool: {vsock_test_tool}")
 
+    if cmd_receive is None:
+        raise ValueError(f"unexpected test tool: {vsock_test_tool}")
+
     try:
         client.send_message("L1_up")
         client.register_msg("md5_origin:", _get_file_l2)

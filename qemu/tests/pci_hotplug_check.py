@@ -103,17 +103,12 @@ def run(test, params, env):
 
         # Probe qemu for a list of supported devices
         probe_output = vm.monitor.human_monitor_cmd("%s ?" % cmd_type)  # pylint: disable=E0606
-        devices_supported = [
-            j.strip('"')
-            for j in re.findall(
-                r"\"[a-z|0-9|\-|\_|\,|\.]*\"", probe_output, re.MULTILINE
-            )
-        ]
-        test.log.debug(
-            "QEMU reported the following supported devices for " "PCI hotplug: %s",
-            devices_supported,
-        )
-        return dev in devices_supported
+        devices_supported = [j.strip('"') for j in
+                             re.findall(r'\"[a-z|0-9|\-|\_|\,|\.]*\"',
+                                        probe_output, re.MULTILINE)]
+        test.log.debug("QEMU reported the following supported devices for "
+                       "PCI hotplug: %s", devices_supported)
+        return (dev in devices_supported)
 
     def verify_supported_device(dev):
         if not is_supported_device(dev):
@@ -165,20 +160,15 @@ def run(test, params, env):
         nonlocal_vars["verify_device_flag"] = False
 
         add_cmd = "{0} driver=file,filename={1},node-name=file_{2}".format(
-            drive_cmd_type, image_filename, pci_info[pci_num][0]
-        )
+            drive_cmd_type, image_filename, pci_info[pci_num][0])
         add_cmd += ";{0} driver={1},node-name={2},file=file_{2}".format(
-            drive_cmd_type, image_format, pci_info[pci_num][0]
-        )
+            drive_cmd_type, image_format, pci_info[pci_num][0])
         driver_add_cmd = add_cmd
 
         if drive_cmd_type == "drive_add":
-            driver_add_cmd = "%s auto file=%s,if=none,format=%s,id=%s" % (
-                drive_cmd_type,
-                image_filename,
-                image_format,
-                pci_info[pci_num][0],
-            )
+            driver_add_cmd = ("%s auto file=%s,if=none,format=%s,id=%s" %
+                              (drive_cmd_type, image_filename, image_format,
+                               pci_info[pci_num][0]))
         elif drive_cmd_type == "__com.redhat_drive_add":
             driver_add_cmd = "%s file=%s,format=%s,id=%s" % (
                 drive_cmd_type,

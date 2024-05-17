@@ -1731,26 +1731,16 @@ class QemuGuestAgentBasicCheck(QemuGuestAgentTest):
                 elif ip["ip-address-type"] == "ipv6":
                     ip_addr_qga_ipv6 = ip["ip-address"].split("%")[0]
                 else:
-                    test.fail(
-                        "The ip address type is %s, but it should be"
-                        " ipv4 or ipv6." % ip["ip-address-type"]
-                    )
-            if (
-                guest_ip_ipv4 != ip_addr_qga_ipv4  # pylint: disable=E0606
-                or guest_ip_ipv6 != ip_addr_qga_ipv6
-            ):  # pylint: disable=E0601
-                test.fail(
-                    "Get the wrong ip address for %s interface:\n"
-                    "ipv4 address from qga is %s, the expected is %s;\n"
-                    "ipv6 address from qga is %s, the expected is %s."
-                    % (
-                        if_name,
-                        ip_addr_qga_ipv4,
-                        guest_ip_ipv4,
-                        ip_addr_qga_ipv6,
-                        guest_ip_ipv6,
-                    )
-                )
+                    test.fail("The ip address type is %s, but it should be"
+                              " ipv4 or ipv6." % ip["ip-address-type"])
+            if (guest_ip_ipv4 != ip_addr_qga_ipv4   # pylint: disable=E0606
+                    or guest_ip_ipv6 != ip_addr_qga_ipv6):  # pylint: disable=E0601
+                test.fail("Get the wrong ip address for %s interface:\n"
+                          "ipv4 address from qga is %s, the expected is %s;\n"
+                          "ipv6 address from qga is %s, the expected is %s."
+                          % (if_name, ip_addr_qga_ipv4,
+                             guest_ip_ipv4, ip_addr_qga_ipv6,
+                             guest_ip_ipv6))
 
         session = self.vm.wait_for_login()
         session_serial = self.vm.wait_for_serial_login()
@@ -2727,7 +2717,8 @@ class QemuGuestAgentBasicCheck(QemuGuestAgentTest):
         self._open_session_list.append(session)
         image_size_stg0 = params["image_size_stg0"]
 
-        error_context.context("Format the new data disk and mount it.", LOG_JOB.info)
+        error_context.context("Format the new data disk and mount it.",
+                              LOG_JOB.info)
         mount_points = []
         if params.get("os_type") == "linux":
             self.gagent_setsebool_value("on", params, self.vm)
@@ -3801,10 +3792,7 @@ class QemuGuestAgentBasicCheck(QemuGuestAgentTest):
         elif full_qga_ver in VersionInterval("[7.2.0-4,)"):
             black_list_spec = "BLOCK_RPCS"
         if black_list_spec == "allow-rpcs":
-            black_list_change_cmd = (
-                "sed -i 's/%s.*/%s=guest-info\"/g' /etc/sysconfig/qemu-ga"
-                % (black_list_spec, black_list_spec_replace)  # pylint: disable=E0606
-            )
+            black_list_change_cmd = "sed -i 's/%s.*/%s=guest-info\"/g' /etc/sysconfig/qemu-ga" % (black_list_spec, black_list_spec_replace)  # pylint: disable=E0606
         else:
             black_list_change_cmd = (
                 "sed -i 's/%s.*/%s=guest-info/g' /etc/sysconfig/qemu-ga"
@@ -4322,9 +4310,8 @@ class QemuGuestAgentBasicCheckWin(QemuGuestAgentBasicCheck):
         :param vm: Virtual machine object.
         :return qemu_ga_pkg_path: Return the guest agent pkg path.
         """
-        error_context.context(
-            "Get %s path where it locates." % qemu_ga_pkg, LOG_JOB.info
-        )
+        error_context.context("Get %s path where it locates." % qemu_ga_pkg,
+                              LOG_JOB.info)
         qemu_ga_pkg_path = ""
         if self.gagent_src_type == "url":
             gagent_host_path = params["gagent_host_path"]
