@@ -5,6 +5,7 @@ from aexpect import ShellTimeoutError
 
 from virttest import error_context
 from virttest import utils_misc
+from virttest import utils_net
 from virttest.utils_windows import virtio_win, wmic
 from virttest.utils_test.qemu import windrv_verify_running
 
@@ -70,7 +71,7 @@ def run(test, params, env):
     key_to_install_driver = params.get("key_to_install_driver").split(";")
 
     vm = env.get_vm(params["main_vm"])
-    session = vm.wait_for_login()
+    session = vm.wait_for_serial_login()
 
     # wait for cdroms having driver installed in case that
     # they are new appeared in this test
@@ -158,6 +159,8 @@ def run(test, params, env):
 
     error_context.context("Installing target driver", test.log.info)
     installed_any = False
+    session.close()
+    session = vm.wait_for_serial_login()
     for hwid in device_hwid.split():
         output = session.cmd_output("%s find %s" % (devcon_path, hwid))
         if re.search("No matching devices found", output, re.I):
@@ -172,6 +175,10 @@ def run(test, params, env):
         if not utils_misc.wait_for(lambda: not session.cmd_status(chk_cmd),
                                    600, 60, 10):
             test.fail("Failed to install driver '%s'" % driver_name)
+        status, output = utils_net.ping("223.5.5.5", count=10, timeout=60,
+                                        session=session)
+        if status:
+            test.fail("Ping %s failed, output=%s" % (host_ip, output))
 
         installed_any |= True
     if not installed_any:
