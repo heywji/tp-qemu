@@ -1,4 +1,5 @@
 import os
+import time
 
 from virttest import error_context
 from virttest import utils_net
