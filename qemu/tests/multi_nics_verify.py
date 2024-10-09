@@ -59,7 +59,7 @@ def run(test, params, env):
             )
             status, netadapter_out = session.cmd_status_output(netadapter_index, timeout=timeout)
             if status != 0:
-                LOG.info(f"netadapter_index gets {netadapter_index}")
+                test.log.info(f"netadapter_index gets {netadapter_index}")
 
             check_ip_cmd = (
                 f"powershell -Command 'Get-NetIPAddress -InterfaceIndex {netadapter_index}' "
@@ -67,19 +67,19 @@ def run(test, params, env):
             )
             status, ip_out = session.cmd_status_output(check_ip_cmd, timeout=timeout)
             if status == 0 and '10.' in ip_out or '192.168.' in ip_out:
-                LOG.info(f"New IP Address obtained: {ip_out}")
+                test.log.info(f"New IP Address obtained: {ip_out}")
                 return ip_out
             else:
-                LOG.info("No IP Address found. Retrying DHCP...")
+                test.log.info("No IP Address found. Retrying DHCP...")
 
             attempts += 1
-            LOG.info(f"Attempt {attempts}/{count} to renew DHCP and get IP address...")
+            test.log.info(f"Attempt {attempts}/{count} to renew DHCP and get IP address...")
             renew_dhcp_cmd = f"powershell -Command 'Restart-NetAdapter -InterfaceIndex {netadapter_index} -Confirm:$false'"
             status, _ = session.cmd_status_output(renew_dhcp_cmd, timeout=timeout)
             if status != 0:
-                LOG.info("DHCP renew failed. Retrying...")
+                test.log.info("DHCP renew failed. Retrying...")
             time.sleep(5)
-        LOG.info(f"Failed to obtain IP address for MAC {mac_addr} after {count} attempts.")
+        test.log.info(f"Failed to obtain IP address for MAC {mac_addr} after {count} attempts.")
         return None
 
     # Get the ethernet cards number from params
