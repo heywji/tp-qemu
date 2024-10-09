@@ -63,7 +63,7 @@ def run(test, params, env):
                 test.log.info(f"netadapter_index gets {netadapter_index}")
 
             check_ip_cmd = (
-                f"powershell -Command 'Get-NetIPAddress -InterfaceIndex {netadapter_index}' "
+                f"powershell -Command 'Get-NetIPAddress -InterfaceIndex {netadapter_out}' "
                 "| Where-Object { $_.PrefixOrigin -eq 'Dhcp' } | Select-Object -ExpandProperty IPAddress"
             )
             status, ip_out = session.cmd_status_output(check_ip_cmd, timeout=timeout)
@@ -75,7 +75,7 @@ def run(test, params, env):
 
             attempts += 1
             test.log.info(f"Attempt {attempts}/{count} to renew DHCP and get IP address...")
-            renew_dhcp_cmd = f"powershell -Command 'Restart-NetAdapter -InterfaceIndex {netadapter_index} -Confirm:$false'"
+            renew_dhcp_cmd = f"powershell -Command 'Restart-NetAdapter -InterfaceIndex {netadapter_out} -Confirm:$false'"
             status, _ = session.cmd_status_output(renew_dhcp_cmd, timeout=timeout)
             if status != 0:
                 test.log.info("DHCP renew failed. Retrying...")
