@@ -45,22 +45,26 @@ def run(test, params, env):
     def get_ip_or_renew_dhcp_win(session, mac_addr, timeout=240, count=3):
         """
         Attempt to obtain an IP address via DHCP. If unsuccessful, renew the DHCP lease.
-    
         :param session: The session where the commands will be executed.
         :param mac_addr: The MAC address of the target network adapter.
         :param timeout: Maximum wait time in seconds, default is 240 seconds.
         :param count: The number of retry attempts, default is 3.
         :return: The obtained IP address or None if unsuccessful.
         """
-     
         mac_addr = mac_addr.replace(":", "-")
         attempts = 0
         while attempts < count:
-            netadapter_index = f"powershell -Command '(Get-NetAdapter | Where-Object {{ $_.MacAddress -eq "{mac_addr}" }}).ifIndex'"
+            netadapter_index = (
+                f'powershell -Command "(Get-NetAdapter | Where-Object {{ $_.MacAddress -eq {mac_addr} }}).ifIndex"'
+            )
             status, netadapter_out = session.cmd_status_output(netadapter_index, timeout=timeout)
+            if status != 0:
+                LOG.info(f"netadapter_index gets {netadapter_index}")
 
-            check_ip_cmd = f"powershell -Command '{ Get-NetIPAddress -InterfaceIndex {netadapter_index}'
-                            '| Where-Object {{ $_.PrefixOrigin -eq "Dhcp" }} | Select-Object -ExpandProperty IPAddress }}'"
+            check_ip_cmd = (
+                f"powershell -Command 'Get-NetIPAddress -InterfaceIndex {netadapter_index}' "
+                "| Where-Object { $_.PrefixOrigin -eq 'Dhcp' } | Select-Object -ExpandProperty IPAddress"
+            )
             status, ip_out = session.cmd_status_output(check_ip_cmd, timeout=timeout)
             if status == 0 and '10.' in ip_out or '192.168.' in ip_out:
                 LOG.info(f"New IP Address obtained: {ip_out}")
@@ -70,14 +74,11 @@ def run(test, params, env):
 
             attempts += 1
             LOG.info(f"Attempt {attempts}/{count} to renew DHCP and get IP address...")
-              
             renew_dhcp_cmd = f"powershell -Command 'Restart-NetAdapter -InterfaceIndex {netadapter_index} -Confirm:$false'"
             status, _ = session.cmd_status_output(renew_dhcp_cmd, timeout=timeout)
             if status != 0:
                 LOG.info("DHCP renew failed. Retrying...")
-    
             time.sleep(5)
-    
         LOG.info(f"Failed to obtain IP address for MAC {mac_addr} after {count} attempts.")
         return None
 
@@ -171,6 +172,5 @@ def run(test, params, env):
             test.fail(err_log)
         nic_interface.append(guest_ip)
     session_srl.close()
-
     test.log.info("All the [ %s ] NICs get IPs.", nics_num)
     vm.destroy()
