@@ -1,4 +1,5 @@
-import os,time
+import os
+import time
 
 from virttest import env_process, error_context, utils_misc, utils_net
 
@@ -122,31 +123,34 @@ def run(test, params, env):
     total_timeout = params.get_numeric("total_timeout", 600)
     single_timeout = params.get_numeric("single_timeout", 30)
     nic_none = {}
-    
+
     for index, nic in enumerate(vm.virtnet):
         test.log.info("Checking NIC %d...", index)
-    
+
         def _ip_ready(index=index, nic=nic):
             try:
                 guest_ip = utils_net.get_guest_ip_addr(
                     session_srl, nic.mac, os_type, ip_version="ipv4"
                 )
                 test.log.debug("NIC %d IP: %s", index, guest_ip)
-                if guest_ip == None:
+                if guest_ip is None:
                     nic_none[index] = nic
                     return False
                 return True
             except utils_net.IPAddrGetError:
                 return False
-    
+
         if not utils_misc.wait_for(_ip_ready, single_timeout, step=2):
             slow_cnt += 1
             test.log.info("NIC %d > %ds get IP", index, single_timeout)
             if slow_cnt > slow_nics:
-                test.fail("More than %d NICs spent >%ds to get IP" % (slow_nics, single_timeout))
+                test.fail(
+                    "More than %d NICs spent >%ds to get IP"
+                    % (slow_nics, single_timeout)
+                )
         if time.monotonic() - t0_all > total_timeout:
             test.fail("Waited over %ds to get IPs from NICs" % total_timeout)
-    
+
     for index, nic in nic_none.items():
         guest_ip = utils_net.get_guest_ip_addr(
             session_srl, nic.mac, os_type, ip_version="ipv4"
@@ -155,7 +159,7 @@ def run(test, params, env):
         if not guest_ip:
             err_log = "vm get interface %s's ip failed." % index
             test.fail(err_log)
-    
+
     session_srl.close()
     test.log.info("All the [ %s ] NICs get IPs.", nics_num)
     vm.destroy()
