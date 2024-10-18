@@ -2,6 +2,7 @@
 Windows dump related utilities.
 """
 import os
+import time
 import logging
 
 from avocado.utils import process
@@ -79,13 +80,12 @@ def install_windbg(test, params, session, timeout=600):
     windbg_install_cmd = utils_misc.set_winutils_letter(session,
                                                         windbg_install_cmd
                                                         % params["feature"])
-
-    session.cmd(windbg_install_cmd)
-    if not utils_misc.wait_for(lambda: check_windbg_installed(params, session),
-                               timeout=timeout, step=5):
-        test.fail("windbg tool has not been installed")
-    else:
-        LOG_JOB.info("windbg tool installation completed")
+    while check_windbg_installed(params, session) is not True:
+        status, output = session.cmd_status_output(windbg_install_cmd)
+        if status == 1:
+            time.sleep(30)
+        else:
+            LOG_JOB.info("windbg tool installation completed")
 
 
 def check_windbg_installed(params, session):
@@ -95,8 +95,8 @@ def check_windbg_installed(params, session):
     :param params: the dict used for parameters.
     :param session: The guest session object.
     """
-    check_cmd = params["chk_windbg_cmd"] % params["windbg_path"]
-    status, _ = session.cmd_status_output(check_cmd)
+    chk_windbg_cmd = params["chk_windbg_cmd"]
+    status, _ = session.cmd_status_output(chk_windbg_cmd)
     return False if status else True
 
 
