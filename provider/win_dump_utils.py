@@ -4,6 +4,7 @@ Windows dump related utilities.
 
 import logging
 import os
+import time
 
 from avocado.utils import process
 from virttest import env_process, utils_misc
@@ -81,11 +82,9 @@ def install_windbg(test, params, session, timeout=600):
 
     session.cmd(windbg_install_cmd)
     time.sleep(30)  # Wait 30 seconds here for installation.
-    windbg_install_log = params.get(
-        "windbg_install_log", r"C:\ProgramData\chocolatey\logs\chocolatey.log"
-    )
+    windbg_install_log = params.get("windbg_install_log", r"C:\ProgramData\chocolatey\logs\chocolatey.log")
     status, output = session.cmd_status_output("type %s" % windbg_install_log)
-    if "windbg was successful" in output:
+    if ("windbg was successful" in output) or ("SDKDebuggers_x86_en_us, state: Present" in output):
         LOG_JOB.info("windbg tool installation completed")
     else:
         test.fail("windbg tool has not been installed")
