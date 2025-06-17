@@ -4,6 +4,7 @@ Windows dump related utilities.
 
 import logging
 import os
+import time
 
 from avocado.utils import process
 from virttest import env_process, utils_misc
@@ -83,13 +84,14 @@ def install_windbg(test, params, session, timeout=600):
     )
 
     session.cmd(windbg_install_cmd)
+    time.sleep(30)
     windbg_install_log = params["windbg_install_log"]
     status, output = session.cmd_status_output("type %s"
                                                % windbg_install_log)
-    if 'package_SDKDebuggers_x86_en_us, state: Present' in output:
-        LOG_JOB.info("windbg tool installation completed")
-    else:
-        test.fail("windbg tool has not been installed")
+   if ("SDKDebuggers_x86_en_us, state: Present" in output) or ("SDKDebuggers_x64_en_us, state: Present" in output):
+       LOG_JOB.info("windbg tool installation completed")
+   else:
+       test.fail("windbg tool has not been installed")
 
 
 def check_windbg_installed(params, session):
