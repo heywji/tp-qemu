@@ -1,10 +1,6 @@
-import os
-import time
+import os, sys, time
 
-from virttest import error_context
-from virttest import utils_net
-from virttest import env_process
-from virttest import utils_misc
+from virttest import env_process, error_context, utils_misc, utils_net
 
 
 @error_context.context_aware
@@ -24,6 +20,82 @@ def run(test, params, env):
     :param params: Dictionary with the test parameters
     :param env: Dictionary with test environment.
     """
+    def wmi_operations(session, vm, params, test, timeout):
+        """
+        Dump NetKVM WMI configuration (“cfg”) to the log.
+
+        This function runs twice: once after a *cold boot* and once
+        after a *hot reboot*, enabling time-series comparison.
+
+        :param session: VM session info
+        :param vm: QEMU test object
+        :param params: Dictionary with the test parameters
+        :param test: QEMU test object
+        :param timeout: VM login time value
+        """
+        test.log.info("Record the data after fastinit operation")
+        netkvm_wmi = r'WIN_UTILS:\netkvm\WMI\netkvm-wmi.cmd'
+        netkvm_wmi = utils_misc.set_winutils_letter(session, netkvm_wmi)
+        status, output = session.cmd_status_output("%s cfg" % netkvm_wmi, timeout)
+        test.log.info("fastinit data: %s", output)
+        return output
+
+
+    def disable_driver_verifier(vm, params, test, timeout):
+        """
+        Turn Driver Verifier off (Windows guest only).
+
+        1) Read *enable_verifier* (yes → enable, no → disable)
+        2) Query current Driver Verifier status in the guest
+        3) If state is already as requested, exit
+        4) Otherwise run the enable/reset command and reboot
+        5) Re-query after reboot to confirm the final state
+        6) Raise TestError if the state is still wrong
+
+        :param vm: QEMU test object
+        :param params: Dictionary with the test parameters
+        :param test: QEMU test object
+        :param timeout: VM login time value
+        """
+        enable_verifier = bool(params.get_numeric("enable_verifier", 1))
+        query_cmd = params.get("driver_verifier_query", "verifier /querysettings")
+        enable_cmd = params.get(
+            "driver_verifier_enable", "verifier /standard /flags netkvm.sys ndis.sys"
+        )
+        reset_cmd = params.get("driver_verifier_reset", "verifier /reset")
+
+        def verifier_is_on(session, query_cmd=query_cmd):
+            """
+            Return True if Driver Verifier is currently enabled
+
+            Driver Verifier is considered *OFF* when the mask is
+            **0x00000000**; otherwise it is *ON*.
+            """
+            output = session.cmd_output(query_cmd)
+            return "0x00000000" not in output
+
+        session = vm.wait_for_serial_login(timeout)
+        active = verifier_is_on(session)
+        if enable_verifier is not active:
+            if enable_verifier is True:
+                cmd = enable_cmd
+            else:
+                cmd = reset_cmd
+            session.cmd_status_output(cmd)
+            vm.reboot(method="shell", serial=True, timeout=timeout, session=session)
+        else:
+            return
+
+        session = vm.wait_for_serial_login(timeout)
+        test.log.info("Current Driver Verifier: %s", session.cmd_output(query_cmd))
+        active = verifier_is_on(session)
+        if enable_verifier is not active:
+            test.error("Driver Verifier state MISmatch after reboot")
+        else:
+            test.log.info("Driver Verifier state MATCH after reboot")
+        session.close()
+
+
     def check_nics_num(expect_c, session):
         """
         Check whether guest NICs number match with params set in cfg file
@@ -41,60 +113,20 @@ def run(test, params, env):
         if not expect_c == actual_c:
             msg += "Nics count mismatch!\n"
             return (False, msg)
-        return (True, msg + 'Nics count match')
-
-    def get_ip_or_renew_dhcp_win(session, mac_addr, timeout=240, count=3):
-        """
-        Attempt to obtain an IP address via DHCP. If unsuccessful, renew the DHCP lease.
-        :param session: The session where the commands will be executed.
-        :param mac_addr: The MAC address of the target network adapter.
-        :param timeout: Maximum wait time in seconds, default is 240 seconds.
-        :param count: The number of retry attempts, default is 3.
-        :return: The obtained IP address or None if unsuccessful.
-        """
-        mac_addr = mac_addr.replace(":", "-")
-        attempts = 0
-        while attempts < count:
-            netadapter_index = (
-                f'powershell -Command "(Get-NetAdapter | Where-Object {{ $_.MacAddress -eq {mac_addr} }}).ifIndex"'
-            )
-            status, netadapter_out = session.cmd_status_output(netadapter_index, timeout=timeout)
-            if status != 0:
-                test.log.info(f"netadapter_index gets {netadapter_index}")
-
-            check_ip_cmd = (
-                f"powershell -Command 'Get-NetIPAddress -InterfaceIndex {netadapter_out}' "
-                "| Where-Object { $_.PrefixOrigin -eq 'Dhcp' } | Select-Object -ExpandProperty IPAddress"
-            )
-            status, ip_out = session.cmd_status_output(check_ip_cmd, timeout=timeout)
-            if status == 0 and '10.' in ip_out or '192.168.' in ip_out:
-                test.log.info(f"New IP Address obtained: {ip_out}")
-                return ip_out
-            else:
-                test.log.info("No IP Address found. Retrying DHCP...")
-
-            attempts += 1
-            test.log.info(f"Attempt {attempts}/{count} to renew DHCP and get IP address...")
-            renew_dhcp_cmd = f"powershell -Command 'Restart-NetAdapter -InterfaceIndex {netadapter_out} -Confirm:$false'"
-            status, _ = session.cmd_status_output(renew_dhcp_cmd, timeout=timeout)
-            if status != 0:
-                test.log.info("DHCP renew failed. Retrying...")
-            time.sleep(5)
-        test.log.info(f"Failed to obtain IP address for MAC {mac_addr} after {count} attempts.")
-        return None
+        return (True, msg + "Nics count match")
 
     # Get the ethernet cards number from params
     nics_num = int(params.get("nics_num", 8))
     for i in range(nics_num):
         nics = "nic%s" % i
-        params["nics"] = ' '.join([params["nics"], nics])
+        params["nics"] = " ".join([params["nics"], nics])
     params["start_vm"] = "yes"
     env_process.preprocess_vm(test, params, env, params["main_vm"])
 
     vm = env.get_vm(params["main_vm"])
     vm.verify_alive()
     login_timeout = params.get_numeric("login_timeout")
-    session = vm.wait_for_login(timeout=login_timeout)
+    session = vm.wait_for_serial_login(timeout=login_timeout)
 
     test.log.info("[ %s ] NICs card specified in config file", nics_num)
 
@@ -118,14 +150,20 @@ def run(test, params, env):
         if network_manager:
             for ifname in ifname_list:
                 eth_keyfile_path = keyfile_path % ifname
-                cmd = "nmcli --offline connection add type ethernet con-name %s ifname %s" \
-                      " ipv4.method auto > %s" % (ifname, ifname, eth_keyfile_path)
+                cmd = (
+                    "nmcli --offline connection add type ethernet con-name %s ifname %s"
+                    " ipv4.method auto > %s" % (ifname, ifname, eth_keyfile_path)
+                )
                 s, o = session.cmd_status_output(cmd)
                 if s != 0:
                     err_msg = "Failed to create ether keyfile: %s\nReason is: %s"
                     test.error(err_msg % (eth_keyfile_path, o))
-            session.cmd("chown root:root /etc/NetworkManager/system-connections/*.nmconnection")
-            session.cmd("chmod 600 /etc/NetworkManager/system-connections/*.nmconnection")
+            session.cmd(
+                "chown root:root /etc/NetworkManager/system-connections/*.nmconnection"
+            )
+            session.cmd(
+                "chmod 600 /etc/NetworkManager/system-connections/*.nmconnection"
+            )
             session.cmd("nmcli connection reload")
         else:
             for ifname in ifname_list:
@@ -149,29 +187,82 @@ def run(test, params, env):
 
     def _check_ip_number():
         for index, nic in enumerate(vm.virtnet):
-            if os_type == "linux":
-                guest_ip = utils_net.get_guest_ip_addr(session_srl, nic.mac, os_type,
-                                                       ip_version="ipv4")
-            elif os_type == "windows":
-                guest_ip = get_ip_or_renew_dhcp_win(session_srl, nic.mac)
-            if not guest_ip:
+            guest_ip = utils_net.get_guest_ip_addr(
+                session_srl, nic.mac, os_type, ip_version="ipv4"
+            )
+            if guest_ip == None:
                 return False
         return True
 
-    # Check all the interfaces in guest get ips
-    session_srl = vm.wait_for_serial_login(timeout=int(params.get("login_timeout", 360)))
-    if not utils_misc.wait_for(_check_ip_number, 1000, step=10):
-        test.error("Timeout when wait for nics to get ip")
+    def _check_NICs_growth(nics_num: int) -> bool:
+        """
+        Return True when all expected VirtIO NICs are present and have valid IPv4.
+        Otherwise return False so that utils_misc.wait_for() keeps retrying.
+        """
+        try:
+            adapters = wmi_operations(
+                timeout=30,
+                session=session,
+                vm=vm,
+                params=params,
+                test=test,
+            )
+        except Exception as exc:
+            test.log.warn(f"wmi_operations raised {exc!r}")
+            return False
+    
+        if not adapters:
+            test.log.warn("wmi_operations returned None or empty list")
+            return False
+    
+        # Compose the expected adapter name according to the NIC index
+        expected_name = f"Red Hat VirtIO Ethernet Adapter #{nics_num}"
+        if expected_name not in adapters:
+            test.log.debug(f"{expected_name} not yet in guest adapters: {adapters}")
+            return False
+        return True
+    
+    
+    def _check_dhcp(session):
+        # Check for APIPA addresses, which indicate no DHCP lease
+        if "169.254" in session.cmd_output("ipconfig /all", timeout=10):
+            test.log.debug("Guest still shows 169.254 address, waiting for DHCP")
+            return False
+        return True
 
+    # Check all the interfaces in guest get ips
+    session_srl = vm.wait_for_serial_login(
+        timeout=int(params.get("login_timeout", 360))
+    )
+#   params["enable_verifier"] = 0
+#   disable_driver_verifier(vm=vm, params=params, test=test, timeout=3600)
+    start_time = time.time()
+    if not utils_misc.wait_for(lambda: _check_NICs_growth(nics_num=nics_num), 600, step=30):
+        test.error("waiting for all nics to be ready")
+    middle_time = time.time()
+    test.log.info("speend time: %s seconds on the initization state", middle_time - start_time)
+    if not utils_misc.wait_for(lambda: _check_dhcp(session=session), 6000, step=30):
+        test.error("waiting for all nics to get ip")
     nic_interface = []
     for index, nic in enumerate(vm.virtnet):
         test.log.info("index %s nic", index)
-        guest_ip = utils_net.get_guest_ip_addr(session_srl, nic.mac, os_type,
-                                               ip_version="ipv4")
+        guest_ip = utils_net.get_guest_ip_addr(
+            session_srl, nic.mac, os_type, ip_version="ipv4"
+        )
+        print(guest_ip)
         if not guest_ip:
             err_log = "vm get interface %s's ip failed." % index
             test.fail(err_log)
         nic_interface.append(guest_ip)
     session_srl.close()
     test.log.info("All the [ %s ] NICs get IPs.", nics_num)
+    end_time = time.time()
+    test.log.info(
+        "%s -> %s -> %s %s",
+        time.strftime("%H:%M:%S", time.localtime(start_time)),
+        time.strftime("%H:%M:%S", time.localtime(middle_time)),
+        time.strftime("%H:%M:%S", time.localtime(end_time)),
+        time.strftime("%H:%M:%S", time.gmtime(end_time - start_time)),
+    )
+
     vm.destroy()
