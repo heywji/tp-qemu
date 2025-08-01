@@ -1,5 +1,6 @@
+import re
 from virttest import utils_net
-from virtio_win import get_keyword_from_traceview
+from virttest.utils_windows.virtio_win import get_keyword_from_traceview
 
 def run(test, params, env):
     """
@@ -15,8 +16,10 @@ def run(test, params, env):
     :param env: Dictionary with test environmen.
     """
 
+    timeout = params.get_numeric("login_timeout", 240)
     vm = env.get_vm(params["main_vm"])
-    session = vm.wait_for_login()
+    vm.verify_alive()
+    session = vm.wait_for_login(timeout=timeout)
 
     # Enable RSS and setup RSS Queues value
     rss_queues = params["rss_queues"]
@@ -30,8 +33,12 @@ def run(test, params, env):
     test.log.info("ndis poll mode is %s" % output)
 
     #Check the traceview content
-    keyword = params.get(keyword)
-    result = get_keyword_from_traceview(session, vm, params, keyword)
-    test.log.info("Found '%s' in TraceView logs" % result)
+    keyword = params["keyword"]
+    result = utils_net.dump_traceview_log_windows(params, vm)
+    test.log.info("Traceview log result: %s" % result)
+    mapping_output = re.findall(keyword, result)
+    if not mapping_output:
+        test.error("Can't get %s from traceview" % keyword)
+    return mapping_output
     
     session.close()
