@@ -119,25 +119,28 @@ def run(test, params, env):
                 return False
         return True
 
-    def _check_NICs_growth(nics_num):
-        nics_num_checking_cmd = params.get("nics_num_checking_cmd")
-        curr_num = session.cmd_output(nics_num_checking_cmd, timeout=60)
-        if int(curr_num) > int(nics_num):
-            test.log.info("NIC index %s acquired DHCP" % curr_num)
-        else:
-            test.fail("NIC index %s spent more than 1m to acquire DHCP" % curr_num)
-
     # Check all the interfaces in guest get ips
     session_srl = vm.wait_for_serial_login(
         timeout=int(params.get("login_timeout", 360))
     )
-    utils_misc.wait_for(
-        lambda: _check_NICs_growth(nics_num=nics_num),
-        timeout=1620,
-        first=0,
-        step=60,
-        text="waiting for all nics to get ip",
-    )
+
+   t0_all = time.monotonic()
+   slow_cnt = 0
+   TOTAL_TIMEOUT = 600        # 10 min
+   SINGLE_TIMEOUT = 30        # 30 s
+   for idx, nic in enumerate(vm.virtnet):
+       t0_nic = time.monotonic()
+       def _ip_ready():
+           return bool(utils_net.get_guest_ip_addr(
+               session_srl, nic.mac, os_type, ip_version="ipv4"))
+       if not utils_misc.wait_for(_ip_ready, SINGLE_TIMEOUT, step=2):
+           slow_cnt += 1
+           test.log.warn("NIC %d > %ds 才拿到 IP", idx, SINGLE_TIMEOUT)
+           if slow_cnt > 2:
+               test.fail("超过两块 NIC 花 >%ds 获取 IP" % SINGLE_TIMEOUT)
+       if time.monotonic() - t0_all > TOTAL_TIMEOUT:
+           test.fail("等待 NIC 获取 IP 总时长超过 10 分钟")
+
     if not utils_misc.wait_for(_check_ip_number, 1000, step=10):
         test.error("Timeout when wait for nics to get ip")
 
