@@ -1,6 +1,7 @@
 import re
+
 from virttest import utils_net
-from virttest.utils_windows.virtio_win import get_keyword_from_traceview
+
 
 def run(test, params, env):
     """
@@ -15,11 +16,8 @@ def run(test, params, env):
     :param params: Dictionary with the test parameters
     :param env: Dictionary with test environmen.
     """
-
-    timeout = params.get_numeric("login_timeout", 240)
     vm = env.get_vm(params["main_vm"])
     vm.verify_alive()
-    session = vm.wait_for_login(timeout=timeout)
 
     # Enable RSS and setup RSS Queues value
     rss_queues = params["rss_queues"]
@@ -28,17 +26,15 @@ def run(test, params, env):
     utils_net.set_netkvm_param_value(vm, rss, rss_value)
     utils_net.set_netkvm_param_value(vm, rss_queues, rss_queues_value)
 
-    #Check ndis poll mode state
+    # Check ndis poll mode state
     output = utils_net.get_netkvm_param_value(vm, "*NdisPoll")
-    test.log.info("ndis poll mode is %s" % output)
+    test.log.info("ndis poll mode is %s", output)
 
-    #Check the traceview content
+    # Check the traceview content
     keyword = params["keyword"]
     result = utils_net.dump_traceview_log_windows(params, vm)
-    test.log.info("Traceview log result: %s" % result)
+    test.log.info("Traceview log result: %s", result)
     mapping_output = re.findall(keyword, result)
     if not mapping_output:
-        test.error("Can't get %s from traceview" % keyword)
+        test.error("Can't get %s from traceview", keyword)
     return mapping_output
-    
-    session.close()
