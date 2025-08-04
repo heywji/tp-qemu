@@ -126,7 +126,7 @@ def run(test, params, env):
 
     slow_cnt = 0
     t0_all = time.monotonic()
-    slow_nics = params.get_numberic("slow_nics", 2)
+    slow_nics = params.get_numeric("slow_nics", 2)
     total_timeout = params.get("total_timeout",600)
     single_timeout = params.get("single_timeout",30)
     for idx, nic in enumerate(vm.virtnet):
