@@ -126,9 +126,9 @@ def run(test, params, env):
     )
 
     t0_all = time.monotonic()
-    slow_cnt = 0
-    TOTAL_TIMEOUT = 600        # 10 min
-    SINGLE_TIMEOUT = 30        # 30 s
+    slow_nics = params.get_numeric("slow_nics", 2)
+    total_timeout = params.get_numeric("total_timeout",600)
+    single_timeout = params.get_numeric("single_timeout",30)
     for idx, nic in enumerate(vm.virtnet):
         t0_nic = time.monotonic()
 
@@ -156,16 +156,7 @@ def run(test, params, env):
         if time.monotonic() - t0_all > TOTAL_TIMEOUT:
             test.fail("Wait 10mins to get IP from NICs")
 
-    if not utils_misc.wait_for(_check_ip_number, 1000, step=10):
-        test.error("Timeout when wait for nics to get ip")
-
-    slow_cnt = 0
-    t0_all = time.monotonic()
-    slow_nics = params.get_numeric("slow_nics", 2)
-    total_timeout = params.get_numeric("total_timeout", 600)
-    single_timeout = params.get_numeric("single_timeout", 30)
-    nic_none = {}
-
+    nic_interface = []
     for index, nic in enumerate(vm.virtnet):
         test.log.info("Checking NIC %d...", index)
 
