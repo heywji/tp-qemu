@@ -1,4 +1,4 @@
-import os
+import os,time
 
 from virttest import env_process, error_context, utils_misc, utils_net
 
@@ -132,17 +132,28 @@ def run(test, params, env):
         t0_nic = time.monotonic()
 
         def _ip_ready():
-            return bool(utils_net.get_guest_ip_addr(
-                session_srl, nic.mac, os_type, ip_version="ipv4"))
+            """Return True if the NIC has acquired a non-link-local IPv4, else False."""
+            try:
+                return bool(
+                    utils_net.get_guest_ip_addr(
+                        session_srl,
+                        nic.mac,
+                        os_type,
+                        ip_version="ipv4",
+                    )
+                )
+            except utils_net.IPAddrGetError:
+                # NIC not ready yet, keep waiting
+                return False
 
         if not utils_misc.wait_for(_ip_ready, SINGLE_TIMEOUT, step=2):
             slow_cnt += 1
-            test.log.warn("NIC %d > %ds 才拿到 IP", idx, SINGLE_TIMEOUT)
+            test.log.warn("NIC %d > %ds get IP", idx, SINGLE_TIMEOUT)
             if slow_cnt > 2:
-                test.fail("超过两块 NIC 花 >%ds 获取 IP" % SINGLE_TIMEOUT)
+                test.fail("More than two NICs spent >%ds to get IP" % SINGLE_TIMEOUT)
 
         if time.monotonic() - t0_all > TOTAL_TIMEOUT:
-            test.fail("等待 NIC 获取 IP 总时长超过 10 分钟")
+            test.fail("Wait 10mins to get IP from NICs")
 
     if not utils_misc.wait_for(_check_ip_number, 1000, step=10):
         test.error("Timeout when wait for nics to get ip")
