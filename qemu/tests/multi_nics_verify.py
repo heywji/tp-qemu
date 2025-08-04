@@ -124,15 +124,13 @@ def run(test, params, env):
         timeout=int(params.get("login_timeout", 360))
     )
 
-    t0_all = time.monotonic()
     slow_cnt = 0
-    TOTAL_TIMEOUT = 600        # 10 min
-    SINGLE_TIMEOUT = 30        # 30 s
+    t0_all = time.monotonic()
+    slow_nics = params.get_numberic("slow_nics", 2)
+    total_timeout = params.get("total_timeout",600)
+    single_timeout = params.get("single_timeout",30)
     for idx, nic in enumerate(vm.virtnet):
-        t0_nic = time.monotonic()
-
         def _ip_ready():
-            """Return True if the NIC has acquired a non-link-local IPv4, else False."""
             try:
                 return bool(
                     utils_net.get_guest_ip_addr(
@@ -143,16 +141,13 @@ def run(test, params, env):
                     )
                 )
             except utils_net.IPAddrGetError:
-                # NIC not ready yet, keep waiting
                 return False
-
-        if not utils_misc.wait_for(_ip_ready, SINGLE_TIMEOUT, step=2):
+        if not utils_misc.wait_for(_ip_ready, single_timeout, step=2):
             slow_cnt += 1
-            test.log.warn("NIC %d > %ds get IP", idx, SINGLE_TIMEOUT)
-            if slow_cnt > 2:
-                test.fail("More than two NICs spent >%ds to get IP" % SINGLE_TIMEOUT)
-
-        if time.monotonic() - t0_all > TOTAL_TIMEOUT:
+            test.log.warn("NIC %d > %ds get IP", idx, single_timeout)
+            if slow_cnt > slow_nics:
+                test.fail("More than two NICs spent >%ds to get IP" % single_timeout)
+        if time.monotonic() - t0_all > total_timeout:
             test.fail("Wait 10mins to get IP from NICs")
 
     if not utils_misc.wait_for(_check_ip_number, 1000, step=10):
