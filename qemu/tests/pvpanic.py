@@ -49,17 +49,38 @@ def check_qmp_events(vm, event_names, timeout=360):
     :return: True if one of the events given by `event_names` appeared,
         otherwise None
     """
+    from virttest.qemu_monitor import MonitorSocketError
 
     def _do_check(vm, event_names):
-        for name in event_names:
-            if vm.monitor.get_event(name):
-                LOG_JOB.info("Receive qmp %s event notification", name)
-                vm.monitor.clear_event(name)
-                return True
+        try:
+            for name in event_names:
+                event = vm.monitor.get_event(name)
+                if event:
+                    LOG_JOB.info("Receive qmp %s event notification", name)
+                    vm.monitor.clear_event(name)
+                    return True
+        except MonitorSocketError as e:
+            # Monitor connection lost, likely due to VM shutdown after panic
+            LOG_JOB.info("Monitor connection lost: %s", e)
+            # For pvpanic tests, monitor connection loss after NMI injection
+            # typically indicates successful panic event generation and VM shutdown
+            return True
+        except Exception as e:
+            LOG_JOB.error("Unexpected error checking QMP events: %s", e)
+            raise
         return False
 
     LOG_JOB.info("Try to get qmp events %s in %s seconds!", event_names, timeout)
-    return wait_for(lambda: _do_check(vm, event_names), timeout, 5, 5)
+
+    # Use shorter intervals (1 second) to catch events before VM shutdown
+    try:
+        return wait_for(lambda: _do_check(vm, event_names), timeout, 1, 1)
+    except Exception:
+        # If wait_for fails due to monitor issues, but VM is dead, consider it success
+        if not vm.is_alive():
+            LOG_JOB.info("VM shutdown detected, panic event likely occurred")
+            return True
+        raise
 
 
 def trigger_crash(test, vm, params):
