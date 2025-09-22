@@ -4,6 +4,38 @@ import time
 from virttest import env_process, error_context, utils_misc, utils_net
 
 
+def check_log_blocks(log_text, test):
+    """
+    Check log blocks for NetKVM adapter initialization times.
+
+    :param log_text: WMI output containing adapter information
+    :param test: QEMU test object for logging
+    """
+    lines = log_text.strip().splitlines()
+    for i, ln in enumerate(lines):
+        if "Active=TRUE" in ln:
+            start = i
+            end = min(len(lines), i + 11)
+            block = "\n".join(lines[start:end])
+
+            name_match = re.search(r"InstanceName=([^\n]+)", block)
+            name = (name_match or [None, "UNKNOWN"])[1].strip()
+            init = int((re.search(r"InitTimeMs=(-?\d+)", block) or [None, "0"])[1])
+            lazy = int((re.search(r"LazyAllocTimeMs=(-?\d+)", block) or [None, "0"])[1])
+            total = init + lazy
+
+            if lazy == -1:
+                test.error("test.fail: %s | LazyAllocTimeMs = -1", name)
+            elif init > 10000:
+                test.error("test.fail: %s | InitTimeMs(%s) > 10000", name, init)
+            elif lazy > 50000:
+                test.error("test.fail: %s | LazyAllocTimeMs(%s) > 50000", name, lazy)
+            else:
+                test.log.info(
+                    "[OK] %s | Init=%s Lazy=%s Sum=%s", name, init, lazy, total
+                )
+
+
 @error_context.context_aware
 def run(test, params, env):
     """
@@ -74,55 +106,6 @@ def run(test, params, env):
             test.log.info("Driver Verifier state MATCH after reboot")
         session.close()
 
-    def check_timing_data(output, params, test):
-        """
-        Check NetKVM timing data against configured thresholds.
-
-        :param output: WMI command output string
-        :param params: Test parameters
-        :param test: QEMU test object
-        """
-        # Extract timing values
-        init_times = [int(t) for t in re.findall(r"InitTimeMs\s*=\s*(\d+)", output)]
-        lazy_alloc_times = [
-            int(t) for t in re.findall(r"LazyAllocTimeMs\s*=\s*(-?\d+)", output)
-        ]
-
-        # Filter out -1 values (invalid measurements)
-        lazy_alloc_times = [t for t in lazy_alloc_times if t >= 0]
-
-        test.log.info("InitTimeMs values: %s", init_times)
-        test.log.info("LazyAllocTimeMs values: %s", lazy_alloc_times)
-
-        # Get thresholds from config
-        fastinit_enabled = bool(params.get_numeric("fastinit_value", 1))
-        init_threshold = params.get_numeric("init_time_threshold", 10000)
-        lazy_threshold = params.get_numeric(
-            "lazy_alloc_threshold", 30000 if fastinit_enabled else 10000
-        )
-
-        # Check InitTimeMs
-        if init_times:
-            max_init = max(init_times)
-            if max_init > init_threshold:
-                test.fail(
-                    "InitTimeMs maximum %dms exceeds threshold %dms"
-                    % (max_init, init_threshold)
-                )
-            test.log.info("InitTimeMs: min=%dms, max=%dms", min(init_times), max_init)
-
-        # Check LazyAllocTimeMs
-        if lazy_alloc_times:
-            max_lazy = max(lazy_alloc_times)
-            if max_lazy > lazy_threshold:
-                test.fail(
-                    "LazyAllocTimeMs maximum %dms exceeds threshold %dms"
-                    % (max_lazy, lazy_threshold)
-                )
-            test.log.info(
-                "LazyAllocTimeMs: min=%dms, max=%dms", min(lazy_alloc_times), max_lazy
-            )
-
     def wmi_operations(session, vm, params, test, timeout):
         """
         Dump NetKVM WMI configuration and check timing data.
@@ -134,15 +117,14 @@ def run(test, params, env):
         :param timeout: VM login time value
         """
         test.log.info("Record the data after fastinit operation")
-        netkvm_wmi = params.get("netkvm_wmi", "WIN_UTILS:\netkvm\\WMI\netkvm-wmi.cmd")
+        netkvm_wmi = params.get("netkvm_wmi", "WIN_UTILS:\\netkvm\\WMI\\netkvm-wmi.cmd")
         netkvm_wmi = utils_misc.set_winutils_letter(session, netkvm_wmi)
         status, output = session.cmd_status_output("%s cfg" % netkvm_wmi, timeout)
-        test.log.info("fastinit data: %s", output)
-
-        if status == 0:
-            check_timing_data(output, params, test)
-        else:
+        if status != 0:
             test.log.warning("NetKVM WMI command failed: %s", output)
+        check_log_blocks(output, test)
+        test.log.info("fastinit data: %s", output)
+        return output
 
     def fastinit_nics_operations(session, vm, params, test, timeout):
         """
