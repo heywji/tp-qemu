@@ -4,16 +4,21 @@ import time
 from virttest import env_process, error_context, utils_misc, utils_net
 
 
-def check_log_blocks(log_text, test):
+def check_log_blocks(log_text, test, params):
     """
     Check log blocks for NetKVM adapter initialization times.
 
     :param log_text: WMI output containing adapter information
     :param test: QEMU test object for logging
+    :param params: Dictionary with test parameters (to get nics_num)
     """
     lines = log_text.strip().splitlines()
+    active_count = 0
+    expected_nics_count = params.get_numeric("nics_num", 27)
+
     for i, ln in enumerate(lines):
         if "Active=TRUE" in ln:
+            active_count += 1
             start = i
             end = min(len(lines), i + 11)
             block = "\n".join(lines[start:end])
@@ -25,15 +30,22 @@ def check_log_blocks(log_text, test):
             total = init + lazy
 
             if lazy == -1:
-                test.error("test.fail: %s | LazyAllocTimeMs = -1", name)
+                test.error("test.fail: %s | LazyAllocTimeMs = -1" % name)
             elif init > 10000:
-                test.error("test.fail: %s | InitTimeMs(%s) > 10000", name, init)
+                test.error("test.fail: %s | InitTimeMs(%s) > 10000" % (name, init))
             elif lazy > 50000:
-                test.error("test.fail: %s | LazyAllocTimeMs(%s) > 50000", name, lazy)
+                test.error("test.fail: %s | LazyAllocTimeMs(%s) > 50000" % (name, lazy))
             else:
                 test.log.info(
                     "[OK] %s | Init=%s Lazy=%s Sum=%s", name, init, lazy, total
                 )
+
+    # Verify the count of Active=TRUE NICs matches expected
+    if active_count != expected_nics_count:
+        test.error(
+            "Expected %s NICs with Active=TRUE, but found %s"
+            % (expected_nics_count, active_count)
+        )
 
 
 @error_context.context_aware
@@ -122,8 +134,8 @@ def run(test, params, env):
         status, output = session.cmd_status_output("%s cfg" % netkvm_wmi, timeout)
         if status != 0:
             test.log.warning("NetKVM WMI command failed: %s", output)
-        check_log_blocks(output, test)
         test.log.info("fastinit data: %s", output)
+        check_log_blocks(output, test, params)
         return output
 
     def fastinit_nics_operations(session, vm, params, test, timeout):
@@ -139,13 +151,36 @@ def run(test, params, env):
         error_context.context("Applying NetKVM Fast Init setting...", test.log.info)
         fastinit_value = params.get_numeric("fastinit_value", 1)
         for nic_num in range(0, nics_num - 1):
-            utils_net.set_netkvm_param_value(
-                vm, fastinit_name, fastinit_value, nic_index=nic_num
-            )
-            output = utils_net.get_netkvm_param_value(
+            # Get current value before setting
+            current_value = utils_net.get_netkvm_param_value(
                 vm, fastinit_name, nic_index=nic_num
             )
-            test.log.info("NIC %d FastInit value is %s", nic_num, output)
+            test.log.info("NIC %d current FastInit value: %s", nic_num, current_value)
+
+            # Only set if current value differs from expected value
+            if str(current_value).strip() != str(fastinit_value):
+                test.log.info(
+                    "Setting NIC %d FastInit from %s to %s",
+                    nic_num,
+                    current_value,
+                    fastinit_value,
+                )
+                utils_net.set_netkvm_param_value(
+                    vm, fastinit_name, fastinit_value, nic_index=nic_num
+                )
+                # Verify the change
+                output = utils_net.get_netkvm_param_value(
+                    vm, fastinit_name, nic_index=nic_num
+                )
+                test.log.info(
+                    "NIC %d FastInit value after setting: %s", nic_num, output
+                )
+            else:
+                test.log.info(
+                    "NIC %d FastInit already set to %s, skipping",
+                    nic_num,
+                    fastinit_value,
+                )
 
     login_timeout = params.get_numeric("login_timeout", 3600)
     fastinit_name = params.get("fastinit_name", "FastInit")
