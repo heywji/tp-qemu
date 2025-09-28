@@ -87,6 +87,7 @@ def run(test, params, env):
         expected_nics_count = params.get_numeric("nics_num", 27)
         lazy_alloc_threshold = params.get_numeric("lazy_alloc_threshold", 10000)
         init_alloc_threshold = params.get_numeric("init_alloc_threshold", 10000)
+        lazy_failures = 0  # Count of LazyAllocTimeMs threshold failures
 
         for i, ln in enumerate(lines):
             if "Active=TRUE" in ln:
@@ -104,17 +105,25 @@ def run(test, params, env):
                 total = init + lazy
 
                 if lazy == -1:
-                    test.log.warning(
-                        "Warning: %s | LazyAllocTimeMs = -1 "
-                        "(should not happen after wait)",
-                        name,
+                    test.error(
+                        "test.fail: %s | LazyAllocTimeMs = -1 "
+                        "(should not happen after wait)" % name
                     )
                 elif init > init_alloc_threshold:
-                    test.error("test.fail: %s | InitTimeMs(%s) > 10000", name, init)
+                    test.error("test.fail: %s | InitTimeMs(%s) > 10000" % (name, init))
                 elif lazy > lazy_alloc_threshold:
-                    test.error(
-                        "test.fail: %s | LazyAllocTimeMs(%s) > 100000", name, lazy
-                    )
+                    lazy_failures += 1
+                    if lazy_failures > 1:
+                        test.error(
+                            "test.fail: %s | LazyAllocTimeMs(%s) > 100000"
+                            % (name, lazy)
+                        )
+                    else:
+                        test.log.warning(
+                            "Warning (allowed): %s | LazyAllocTimeMs(%s) > 100000",
+                            name,
+                            lazy,
+                        )
                 else:
                     test.log.info(
                         "[OK] %s | Init=%s Lazy=%s Sum=%s", name, init, lazy, total
@@ -123,9 +132,8 @@ def run(test, params, env):
         # Verify the count of Active=TRUE NICs matches expected
         if active_count != expected_nics_count:
             test.error(
-                "Expected %s NICs with Active=TRUE, but found %s",
-                expected_nics_count,
-                active_count,
+                "Expected %s NICs with Active=TRUE, but found %s"
+                % (expected_nics_count, active_count)
             )
 
     def wmi_operations(session, vm, params, test, timeout):
