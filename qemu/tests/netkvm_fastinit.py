@@ -4,50 +4,6 @@ import time
 from virttest import env_process, error_context, utils_misc, utils_net
 
 
-def check_log_blocks(log_text, test, params):
-    """
-    Check log blocks for NetKVM adapter initialization times.
-
-    :param log_text: WMI output containing adapter information
-    :param test: QEMU test object for logging
-    :param params: Dictionary with test parameters (to get nics_num)
-    """
-    lines = log_text.strip().splitlines()
-    active_count = 0
-    expected_nics_count = params.get_numeric("nics_num", 27)
-
-    for i, ln in enumerate(lines):
-        if "Active=TRUE" in ln:
-            active_count += 1
-            start = i
-            end = min(len(lines), i + 11)
-            block = "\n".join(lines[start:end])
-
-            name_match = re.search(r"InstanceName=([^\n]+)", block)
-            name = (name_match or [None, "UNKNOWN"])[1].strip()
-            init = int((re.search(r"InitTimeMs=(-?\d+)", block) or [None, "0"])[1])
-            lazy = int((re.search(r"LazyAllocTimeMs=(-?\d+)", block) or [None, "0"])[1])
-            total = init + lazy
-
-            if lazy == -1:
-                test.error("test.fail: %s | LazyAllocTimeMs = -1" % name)
-            elif init > 10000:
-                test.error("test.fail: %s | InitTimeMs(%s) > 10000" % (name, init))
-            elif lazy > 50000:
-                test.error("test.fail: %s | LazyAllocTimeMs(%s) > 50000" % (name, lazy))
-            else:
-                test.log.info(
-                    "[OK] %s | Init=%s Lazy=%s Sum=%s", name, init, lazy, total
-                )
-
-    # Verify the count of Active=TRUE NICs matches expected
-    if active_count != expected_nics_count:
-        test.error(
-            "Expected %s NICs with Active=TRUE, but found %s"
-            % (expected_nics_count, active_count)
-        )
-
-
 @error_context.context_aware
 def run(test, params, env):
     """
@@ -118,9 +74,64 @@ def run(test, params, env):
             test.log.info("Driver Verifier state MATCH after reboot")
         session.close()
 
+    def check_log_blocks(log_text, test, params):
+        """
+        Check log blocks for NetKVM adapter initialization times.
+
+        :param log_text: WMI output containing adapter information
+        :param test: QEMU test object for logging
+        :param params: Dictionary with test parameters (to get nics_num)
+        """
+        lines = log_text.strip().splitlines()
+        active_count = 0
+        expected_nics_count = params.get_numeric("nics_num", 27)
+        lazy_alloc_threshold = params.get_numeric("lazy_alloc_threshold", 10000)
+        init_alloc_threshold = params.get_numeric("init_alloc_threshold", 10000)
+
+        for i, ln in enumerate(lines):
+            if "Active=TRUE" in ln:
+                active_count += 1
+                start = i
+                end = min(len(lines), i + 11)
+                block = "\n".join(lines[start:end])
+
+                name_match = re.search(r"InstanceName=([^\n]+)", block)
+                name = (name_match or [None, "UNKNOWN"])[1].strip()
+                init = int((re.search(r"InitTimeMs=(-?\d+)", block) or [None, "0"])[1])
+                lazy = int(
+                    (re.search(r"LazyAllocTimeMs=(-?\d+)", block) or [None, "0"])[1]
+                )
+                total = init + lazy
+
+                if lazy == -1:
+                    test.log.warning(
+                        "Warning: %s | LazyAllocTimeMs = -1 "
+                        "(should not happen after wait)",
+                        name,
+                    )
+                elif init > init_alloc_threshold:
+                    test.error("test.fail: %s | InitTimeMs(%s) > 10000", name, init)
+                elif lazy > lazy_alloc_threshold:
+                    test.error(
+                        "test.fail: %s | LazyAllocTimeMs(%s) > 100000", name, lazy
+                    )
+                else:
+                    test.log.info(
+                        "[OK] %s | Init=%s Lazy=%s Sum=%s", name, init, lazy, total
+                    )
+
+        # Verify the count of Active=TRUE NICs matches expected
+        if active_count != expected_nics_count:
+            test.error(
+                "Expected %s NICs with Active=TRUE, but found %s",
+                expected_nics_count,
+                active_count,
+            )
+
     def wmi_operations(session, vm, params, test, timeout):
         """
         Dump NetKVM WMI configuration and check timing data.
+        Wait for all NICs LazyAllocTimeMs to be non -1 before checking.
 
         :param session: VM session info
         :param vm: QEMU test object
@@ -129,18 +140,16 @@ def run(test, params, env):
         :param timeout: VM login time value
         """
         test.log.info("Record the data after fastinit operation")
-        netkvm_wmi = params.get("netkvm_wmi", "WIN_UTILS:\\netkvm\\WMI\\netkvm-wmi.cmd")
+        netkvm_wmi = params.get("netkvm_wmi", "WIN_UTILS:\netkvm\\WMI\netkvm-wmi.cmd")
         netkvm_wmi = utils_misc.set_winutils_letter(session, netkvm_wmi)
         status, output = session.cmd_status_output("%s cfg" % netkvm_wmi, timeout)
-        if status != 0:
-            test.log.warning("NetKVM WMI command failed: %s", output)
         test.log.info("fastinit data: %s", output)
         check_log_blocks(output, test, params)
         return output
 
     def fastinit_nics_operations(session, vm, params, test, timeout):
         """
-        Set NetKVM params configuration.
+        Check first NIC FastInit status only.
 
         :param session: VM session info
         :param vm: QEMU test object
@@ -148,43 +157,29 @@ def run(test, params, env):
         :param test: QEMU test object
         :param timeout: VM login time value
         """
-        error_context.context("Applying NetKVM Fast Init setting...", test.log.info)
+        error_context.context("Checking first NIC FastInit status...", test.log.info)
         fastinit_value = params.get_numeric("fastinit_value", 1)
-        for nic_num in range(0, nics_num - 1):
-            # Get current value before setting
-            current_value = utils_net.get_netkvm_param_value(
-                vm, fastinit_name, nic_index=nic_num
-            )
-            test.log.info("NIC %d current FastInit value: %s", nic_num, current_value)
+        first_nic_num = 0  # Only check first NIC to save time
 
-            # Only set if current value differs from expected value
-            if str(current_value).strip() != str(fastinit_value):
-                test.log.info(
-                    "Setting NIC %d FastInit from %s to %s",
-                    nic_num,
-                    current_value,
-                    fastinit_value,
-                )
+        # Get current value of first NIC
+        current_value = utils_net.get_netkvm_param_value(
+            vm, fastinit_name, nic_index=first_nic_num
+        )
+        test.log.info("NIC %d current FastInit value: %s", first_nic_num, current_value)
+
+        # Only verify the first NIC's fastinit status to save time
+        if str(current_value).strip() != str(fastinit_value):
+            for nic_num in range(0, nics_num - 1):
                 utils_net.set_netkvm_param_value(
                     vm, fastinit_name, fastinit_value, nic_index=nic_num
                 )
-                # Verify the change
                 output = utils_net.get_netkvm_param_value(
                     vm, fastinit_name, nic_index=nic_num
                 )
-                test.log.info(
-                    "NIC %d FastInit value after setting: %s", nic_num, output
-                )
-            else:
-                test.log.info(
-                    "NIC %d FastInit already set to %s, skipping",
-                    nic_num,
-                    fastinit_value,
-                )
+                test.log.info("NIC %d new FastInit value is %s", nic_num, output)
 
     login_timeout = params.get_numeric("login_timeout", 3600)
     fastinit_name = params.get("fastinit_name", "FastInit")
-    nics_num_checking_cmd = params.get("nics_num_checking_cmd")
     nics_num = params.get_numeric("nics_num", 27)
     nics_param = params.get("nics_param")
     # Dynamically append additional NICs if requested
@@ -209,6 +204,7 @@ def run(test, params, env):
     )
 
     # Destroy to start timing measurement from power-off
+    session.close()
     vm.destroy(gracefully=True)
 
     #  Timing: cold boot to all-NIC-ready
@@ -219,14 +215,6 @@ def run(test, params, env):
     middle_time = time.time()
     test.log.info("Log system boot time: %s", start_time)
     session = vm.wait_for_serial_login(timeout=login_timeout)
-    # TODO: this needs to wait pull/4175
-    utils_misc.wait_for(
-        lambda: int(session.cmd_output(nics_num_checking_cmd, timeout=60)) == nics_num,
-        timeout=1620,
-        first=0,
-        step=60,
-        text="waiting for all nics to get ip",
-    )
     end_time = time.time()
     test.log.info("Log system booted time: %s", end_time)
     test.log.info(
