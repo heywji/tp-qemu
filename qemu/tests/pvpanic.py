@@ -2,7 +2,6 @@ import logging
 import random
 
 import aexpect
-from avocado.utils.wait import wait_for
 from virttest import error_context, utils_misc, utils_test
 
 LOG_JOB = logging.getLogger("avocado.test")
@@ -49,17 +48,53 @@ def check_qmp_events(vm, event_names, timeout=360):
     :return: True if one of the events given by `event_names` appeared,
         otherwise None
     """
+    import time
+
+    from virttest.qemu_monitor import MonitorSocketError
+
+    found_event = False
+    start_time = time.time()
 
     def _do_check(vm, event_names):
-        for name in event_names:
-            if vm.monitor.get_event(name):
-                LOG_JOB.info("Receive qmp %s event notification", name)
-                vm.monitor.clear_event(name)
+        nonlocal found_event
+        try:
+            for name in event_names:
+                event = vm.monitor.get_event(name)
+                if event:
+                    LOG_JOB.info("Receive qmp %s event notification", name)
+                    vm.monitor.clear_event(name)
+                    found_event = True
+                    return True
+        except (ConnectionResetError, MonitorSocketError) as e:
+            # VM has shut down, which can happen after panic with poweroff action
+            if found_event:
+                LOG_JOB.info(
+                    "Monitor connection lost after finding target event, "
+                    "this is expected after guest panic: %s",
+                    e,
+                )
                 return True
+            else:
+                LOG_JOB.warning(
+                    "Monitor connection lost before finding target event: %s", e
+                )
+                # Re-raise to let the caller handle it
+                raise
         return False
 
     LOG_JOB.info("Try to get qmp events %s in %s seconds!", event_names, timeout)
-    return wait_for(lambda: _do_check(vm, event_names), timeout, 5, 5)
+
+    # Use manual loop instead of wait_for to better handle connection errors
+    while time.time() - start_time < timeout:
+        try:
+            if _do_check(vm, event_names):
+                return True
+        except (ConnectionResetError, MonitorSocketError):
+            # Connection lost before finding event - this is unexpected
+            break
+        time.sleep(5)
+
+    return found_event
 
 
 def trigger_crash(test, vm, params):
