@@ -325,9 +325,11 @@ def run(test, params, env):
                 # Modify t_option for logging
                 current_t_option = t_option
                 if c_info["os_type"] == "windows":
-                    current_t_option += " > C:\\netperf.log 2>&1"
+                    # Append '& rem' to consume the ' > null' appended by utils_netperf
+                    current_t_option += " > C:\\netperf.log 2>&1 & rem"
                 else:
-                    current_t_option += " > /tmp/netperf.log 2>&1"
+                    # Append '#' to mask ' > /dev/null' from utils_netperf
+                    current_t_option += " > /tmp/netperf.log 2>&1 #"
 
                 n_client.bg_start(
                     server_ip,
