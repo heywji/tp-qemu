@@ -55,9 +55,10 @@ def run(test, params, env):
 
                         if debug_session:
                             if c_info["os_type"] == "windows":
-                                log_cmd = "type %TEMP%\\netperf.log"
+                                # Use quotes for paths to handle spaces in %TEMP%.
+                                log_cmd = 'type "%TEMP%\\netperf.log"'
                                 ps_cmd = "wmic process where name='netperf.exe' list"
-                                check_file_cmd = "dir %TEMP%\\netperf.log"
+                                check_file_cmd = 'dir "%TEMP%\\netperf.log"'
                                 check_error_cmd = "echo %errorlevel%"
                             else:
                                 log_cmd = "cat /tmp/netperf.log"
@@ -327,11 +328,12 @@ def run(test, params, env):
                 # Modify t_option for logging
                 current_t_option = t_option
                 if c_info["os_type"] == "windows":
-                    # Append '& rem' to consume the ' > null' appended by utils_netperf
-                    current_t_option += " > %TEMP%\\netperf.log 2>&1 & rem"
+                    # Append '& rem' to consume the ' > null' appended by utils_netperf.
+                    # Use quotes for the path to handle spaces in %TEMP%.
+                    current_t_option += ' > "%TEMP%\\netperf.log" 2>&1'
                 else:
                     # Append '#' to mask ' > /dev/null' from utils_netperf
-                    current_t_option += " > /tmp/netperf.log 2>&1 #"
+                    current_t_option += " > /tmp/netperf.log 2>&1"
 
                 n_client.bg_start(
                     server_ip,
