@@ -55,10 +55,10 @@ def run(test, params, env):
 
                         if debug_session:
                             if c_info["os_type"] == "windows":
-                                # Use quotes for paths to handle spaces in %TEMP%.
-                                log_cmd = 'type "%TEMP%\\netperf.log"'
+                                # Use quotes for paths to handle spaces in C: partition.
+                                log_cmd = 'type "c:\\netperf.log"'
                                 ps_cmd = "wmic process where name='netperf.exe' list"
-                                check_file_cmd = 'dir "%TEMP%\\netperf.log"'
+                                check_file_cmd = 'dir "c:\\netperf.log"'
                                 check_error_cmd = "echo %errorlevel%"
                             else:
                                 log_cmd = "cat /tmp/netperf.log"
@@ -327,8 +327,8 @@ def run(test, params, env):
                 current_t_option = t_option
                 if c_info["os_type"] == "windows":
                     # Append '& rem' to consume the ' > null' appended by utils_netperf.
-                    # Use quotes for the path to handle spaces in %TEMP%.
-                    current_t_option += ' > "%TEMP%\\netperf.log" 2>&1'
+                    # Use quotes for the path to handle spaces in C: partition.
+                    current_t_option += ' > "c:\\netperf.log" 2>&1'
                 else:
                     # Append '#' to mask ' > /dev/null' from utils_netperf
                     current_t_option += " > /tmp/netperf.log 2>&1"
