@@ -266,7 +266,6 @@ def run(test, params, env):
             linesep=c_info["linesep"],
             status_test_command=c_info["status_test_command"],
             compile_option=compile_option_client,
-            os_type=c_info["os_type"],
         )
         netperf_clients.append(n_client)
 
@@ -291,7 +290,6 @@ def run(test, params, env):
             linesep=s_info["linesep"],
             status_test_command=s_info["status_test_command"],
             compile_option=compile_option_server,
-            os_type=s_info["os_type"],
         )
         netperf_servers.append(n_server)
 
