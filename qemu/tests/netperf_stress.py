@@ -55,9 +55,9 @@ def run(test, params, env):
 
                         if debug_session:
                             if c_info["os_type"] == "windows":
-                                log_cmd = "type C:\\netperf.log"
+                                log_cmd = "type %TEMP%\\netperf.log"
                                 ps_cmd = "wmic process where name='netperf.exe' list"
-                                check_file_cmd = "dir C:\\netperf.exe"
+                                check_file_cmd = "dir %TEMP%\\netperf.log"
                                 check_error_cmd = "echo %errorlevel%"
                             else:
                                 log_cmd = "cat /tmp/netperf.log"
@@ -265,6 +265,7 @@ def run(test, params, env):
             linesep=c_info["linesep"],
             status_test_command=c_info["status_test_command"],
             compile_option=compile_option_client,
+            os_type=c_info["os_type"],
         )
         netperf_clients.append(n_client)
 
@@ -289,6 +290,7 @@ def run(test, params, env):
             linesep=s_info["linesep"],
             status_test_command=s_info["status_test_command"],
             compile_option=compile_option_server,
+            os_type=s_info["os_type"],
         )
         netperf_servers.append(n_server)
 
@@ -326,7 +328,7 @@ def run(test, params, env):
                 current_t_option = t_option
                 if c_info["os_type"] == "windows":
                     # Append '& rem' to consume the ' > null' appended by utils_netperf
-                    current_t_option += " > C:\\netperf.log 2>&1 & rem"
+                    current_t_option += " > %TEMP%\\netperf.log 2>&1 & rem"
                 else:
                     # Append '#' to mask ' > /dev/null' from utils_netperf
                     current_t_option += " > /tmp/netperf.log 2>&1 #"
