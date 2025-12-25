@@ -30,18 +30,72 @@ def run(test, params, env):
         while duration < max_run_time:
             time.sleep(10)
             duration = time.time() - start_time
-            status = n_client.is_netperf_running()
-            if not status and duration < test_duration - 10:
-                msg = "netperf terminated unexpectedly"
+
+            # Check all clients
+            for i, n_client_chk in enumerate(netperf_clients):
+                status = n_client_chk.is_netperf_running()
+                if not status and duration < test_duration - 10:
+                    msg = "netperf terminated unexpectedly"
+
+                    # Gather debug info for the failed client
+                    try:
+                        c_info = client_infos[i]
+                        client_name_or_ip = params.get("netperf_client").split()[i]
+
+                        test.log.info(
+                            "Collecting debug info for failed client: %s",
+                            client_name_or_ip,
+                        )
+
+                        # Get session (we need to recreate it or use one if we had it)
+                        debug_session = None
+                        if client_name_or_ip in vms:
+                            debug_vm = env.get_vm(client_name_or_ip)
+                            debug_session = debug_vm.wait_for_login()
+
+                        if debug_session:
+                            if c_info["os_type"] == "windows":
+                                log_cmd = "type C:\\netperf.log"
+                                ps_cmd = "wmic process where name='netperf.exe' list"
+                                check_file_cmd = "dir C:\\netperf.exe"
+                                check_error_cmd = "echo %errorlevel%"
+                            else:
+                                log_cmd = "cat /tmp/netperf.log"
+                                ps_cmd = "ps aux | grep netperf"
+                                check_file_cmd = "ls -l /tmp/netperf"
+                                check_error_cmd = "echo $?"
+
+                            test.log.info("Process list (%s):", ps_cmd)
+                            test.log.info(debug_session.cmd_output_safe(ps_cmd))
+
+                            test.log.info("Log content (%s):", log_cmd)
+                            test.log.info(debug_session.cmd_output_safe(log_cmd))
+
+                            test.log.info("File check (%s):", check_file_cmd)
+                            test.log.info(debug_session.cmd_output_safe(check_file_cmd))
+
+                            test.log.info("Exit code check (%s):", check_error_cmd)
+                            test.log.info(
+                                debug_session.cmd_output_safe(check_error_cmd)
+                            )
+
+                            debug_session.close()
+                    except Exception as e:
+                        test.log.error("Failed to collect debug info: %s", e)
+
+                    test.fail(msg)
+                    return False, msg
+
+            test.log.info("Wait netperf test finish %ss", duration)
+
+        # After timeout, check if any is still running
+        for n_client_chk in netperf_clients:
+            if n_client_chk.is_netperf_running():
+                msg = "netperf still running, netperf hangs"
                 test.fail(msg)
                 return False, msg
-            test.log.info("Wait netperf test finish %ss", duration)
-        if n_client.is_netperf_running():
-            msg = "netperf still running, netperf hangs"
-            test.fail(msg)
-            return False, msg
-        else:
-            test.log.info("netperf runs successfully")
+
+        test.log.info("netperf runs successfully")
 
     login_timeout = float(params.get("login_timeout", 360))
     netperf_server = params.get("netperf_server").split()
@@ -263,12 +317,21 @@ def run(test, params, env):
         for protocol in test_protocols.split():
             error_context.context("Testing %s protocol" % protocol, test.log.info)
             t_option = "%s -t %s" % (test_option, protocol)
-            for n_client in netperf_clients:
+            for i, n_client in enumerate(netperf_clients):
                 index = num % s_len
                 server_ip = server_infos[index]["ip"]
+                c_info = client_infos[i]
+
+                # Modify t_option for logging
+                current_t_option = t_option
+                if c_info["os_type"] == "windows":
+                    current_t_option += " > C:\\netperf.log 2>&1"
+                else:
+                    current_t_option += " > /tmp/netperf.log 2>&1"
+
                 n_client.bg_start(
                     server_ip,
-                    t_option,
+                    current_t_option,
                     netperf_para_sess,
                     netperf_cmd_prefix,
                     package_sizes=netperf_package_sizes,
