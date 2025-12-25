@@ -327,6 +327,7 @@ def run(test, params, env):
                 # Modify t_option for logging
                 current_t_option = t_option
                 if c_info["os_type"] == "windows":
+                    # Use quotes for the path to handle spaces in C: partition.
                     current_t_option += ' > "c:\\netperf.log" 2>&1'
                 else:
                     current_t_option += " > /tmp/netperf.log 2>&1"
